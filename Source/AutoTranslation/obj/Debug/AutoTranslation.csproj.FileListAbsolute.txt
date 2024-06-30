@@ -1,0 +1,7 @@
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AutoTranslation\Assemblies\AutoTranslation.dll
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AutoTranslation\Assemblies\AutoTranslation.pdb
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AutoTranslation\Source\AutoTranslation\obj\Debug\AutoTranslation.csproj.AssemblyReference.cache
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AutoTranslation\Source\AutoTranslation\obj\Debug\AutoTranslation.csproj.CoreCompileInputs.cache
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AutoTranslation\Source\AutoTranslation\obj\Debug\AutoTranslation.dll
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AutoTranslation\Source\AutoTranslation\obj\Debug\AutoTranslation.pdb
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AutoTranslation\Source\AutoTranslation\obj\Debug\AutoTran.7F57112A.Up2Date

@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+	<name>Auto Translation</name>
+	<author>SeoHyeon</author>
+	<packageId>seohyeon.autotranslation</packageId>
+	<supportedVersions>
+		<li>1.5</li>
+	</supportedVersions>
+	<description>
+		Translates untranslated strings into your language.
+	</description>
+</ModMetaData>

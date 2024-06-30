@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LanguageData>
+    <AT_Name>Auto Translation</AT_Name>
+
+    <AT_Setting>::Translation settings::</AT_Setting>
+    <AT_Setting_Note>Note: The settings below require a restart</AT_Setting_Note>
+    <AT_Setting_SelectEngine>Select a translation engine (default: Google):</AT_Setting_SelectEngine>
+    <AT_Setting_RequiresAPIKey>Using this translation engine requires an API Key.</AT_Setting_RequiresAPIKey>
+    <AT_Setting_Test>Add '::TEST::' to translations (for testing)</AT_Setting_Test>
+
+    <AT_Setting_Misc>::Misc::</AT_Setting_Misc>
+    <AT_Setting_ResetDefCache>Reset all Def cache data (If some defs are not translated)</AT_Setting_ResetDefCache>
+
+    <AT_Status1>The translation is still in progress. However, you can play the game as usual.</AT_Status1>
+    <AT_Status2>The translation is complete! However, it is recommended to 'Reset all Def cache data' or relaunch for full application.</AT_Status2>
+    <AT_Status3>The translation is complete!</AT_Status3>
+    <AT_Setting_CurStatus>Current status: </AT_Setting_CurStatus>
+    <AT_Setting_Cached>Cached translations: </AT_Setting_Cached>
+    <AT_Setting_NotYet>Not yet translated: </AT_Setting_NotYet>
+    <AT_Setting_OpenDir>Open the folder where the translation caches are stored</AT_Setting_OpenDir>
+
+    <AT_Message_ResetDefCache>Def cache has been initialized!</AT_Message_ResetDefCache>
+    <AT_Message_KeyedDone>Translated all untranslated Keyed!</AT_Message_KeyedDone>
+</LanguageData>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LanguageData>
+    <AT_Name>자동 번역 모드</AT_Name>
+
+    <AT_Setting>::번역 설정::</AT_Setting>
+    <AT_Setting_Note>주의: 아래 설정들은 재시작을 요구합니다</AT_Setting_Note>
+    <AT_Setting_SelectEngine>번역 엔진 선택 (기본: Google):</AT_Setting_SelectEngine>
+    <AT_Setting_RequiresAPIKey>이 번역 엔진을 사용하기 위해서는 API Key가 필요합니다.</AT_Setting_RequiresAPIKey>
+    <AT_Setting_Test>번역문에 '::TEST::' 추가 (테스트용)</AT_Setting_Test>
+
+    <AT_Setting_Misc>::기타::</AT_Setting_Misc>
+    <AT_Setting_ResetDefCache>모든 Def 캐시 데이터 초기화 (몇몇 def들이 번역되지 않았을 경우)</AT_Setting_ResetDefCache>
+
+    <AT_Status1>아직 번역이 진행 중입니다. 하지만 평소처럼 게임을 플레이하실 수 있습니다.</AT_Status1>
+    <AT_Status2>번역이 완료되었습니다! 하지만 완전한 적용을 위해 '모든 Def 캐시 데이터 초기화'나 재실행을 권장드립니다.</AT_Status2>
+    <AT_Status3>번역이 완료되었습니다!</AT_Status3>
+    <AT_Setting_CurStatus>현재 상태: </AT_Setting_CurStatus>
+    <AT_Setting_Cached>저장된 번역 데이터: </AT_Setting_Cached>
+    <AT_Setting_NotYet>아직 번역되지 않은 데이터: </AT_Setting_NotYet>
+    <AT_Setting_OpenDir>번역 데이터가 저장된 폴더 열기</AT_Setting_OpenDir>
+
+    <AT_Message_ResetDefCache>Def 캐시가 초기화 되었습니다!</AT_Message_ResetDefCache>
+    <AT_Message_KeyedDone>모든 Keyed를 번역 완료하였습니다!</AT_Message_KeyedDone>
+</LanguageData>
