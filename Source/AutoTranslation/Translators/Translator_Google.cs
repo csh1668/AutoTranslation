@@ -130,7 +130,7 @@ namespace AutoTranslation.Translators
                 case "Norwegian": return "no";
                 case "Polish": return "pl";
                 case "Portuguese": return "pt-PT";
-                case "Brazilian Portuguese": return "pt";
+                case "Portuguese Brazilian": return "pt";
                 case "Romanian": return "ro";
                 case "Russian": return "ru";
                 case "Slovak": return "sk";
