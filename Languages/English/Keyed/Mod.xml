@@ -16,7 +16,7 @@
     <AT_Status3>The translation is complete!</AT_Status3>
     <AT_Setting_CurStatus>Current status: </AT_Setting_CurStatus>
     <AT_Setting_Cached>Cached translations: </AT_Setting_Cached>
-    <AT_Setting_NotYet>Not yet translated: </AT_Setting_NotYet>
+    <AT_Setting_NotYet>Not translated yet: </AT_Setting_NotYet>
     <AT_Setting_OpenDir>Open the folder where the translation caches are stored</AT_Setting_OpenDir>
 
     <AT_Message_ResetDefCache>Def cache has been initialized!</AT_Message_ResetDefCache>

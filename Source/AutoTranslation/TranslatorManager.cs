@@ -1,13 +1,16 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoTranslation.Translators;
 using RimWorld;
+using UnityEngine.Networking;
 using Verse;
 
 namespace AutoTranslation
@@ -141,7 +144,12 @@ namespace AutoTranslation
 
                         if (success)
                         {
-                            translated = translated.Replace("\\\"", "\"").Replace("\\\n", "\n").Trim();
+                            translated = Regex.Replace(
+                                translated,
+                                @"\\[Uu]([0-9A-Fa-f]{4})",
+                                m => char.ToString(
+                                    (char)ushort.Parse(m.Groups[1].Value, NumberStyles.AllowHexSpecifier)));
+                            //translated = UnityWebRequest.UnEscapeURL(translated, Encoding.UTF8).Trim();
                         }
                         pair.Value(translated, success);
                     }

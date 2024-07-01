@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using HarmonyLib;
 using RimWorld;
+using UnityEngine;
 using Verse;
 using Verse.Noise;
 
@@ -19,6 +20,8 @@ namespace AutoTranslation
             new ConcurrentBag<DefInjectionUtilityCustom.DefInjectionUntranslatedParams>();
         internal static readonly ConcurrentBag<(string, string)> keyedMissing = new ConcurrentBag<(string, string)>();
         internal static bool keyedDone = false;
+
+        internal static readonly ConcurrentDictionary<string, string> ReverseTranslator = new ConcurrentDictionary<string, string>();
 
         internal static IEnumerable<Type> defTypesTranslated
         {
@@ -53,6 +56,9 @@ namespace AutoTranslation
                     {
                         @params.translated = t;
                         @params.InjectIntoDef();
+
+                        if (string.IsNullOrEmpty(t)) return;
+                        ReverseTranslator[t] = @params.original;
                     });
                 }
                 else
@@ -67,10 +73,11 @@ namespace AutoTranslation
                             var (value, placeHolders) = token[1].ToFormatString();
                             TranslatorManager.Translate(value, key+placeHolders.ToLineList(), t =>
                             {
+                                string t2 = string.Empty;
                                 try
                                 {
                                     t = t.FitFormatCount(placeHolders.Count);
-                                    var t2 = key + "->" + string.Format(t, placeHolders.ToArray());
+                                    t2 = key + "->" + string.Format(t, placeHolders.ToArray());
                                     if (!@params.translatedCollection.TryAdd(original, t2)) {}
                                 }
                                 catch (Exception e)
@@ -80,6 +87,9 @@ namespace AutoTranslation
                                     TranslatorManager.CachedTranslations.TryRemove(value, out _);
                                 }
                                 @params.InjectIntoDef();
+
+                                if (string.IsNullOrEmpty(t2)) return;
+                                ReverseTranslator[t2] = original;
                             });
                         }
                         
@@ -112,6 +122,7 @@ namespace AutoTranslation
                 TranslatorManager.Translate(v, k, t =>
                 {
                     bag.Add((k, t));
+                    ReverseTranslator[t] = v;
 
                     if (bag.Count == keyedMissing.Count)
                     {
@@ -120,10 +131,11 @@ namespace AutoTranslation
                         {
                             foreach (var (key, value) in bag)
                             {
+                                if (string.IsNullOrEmpty(key)) continue;
                                 KeyedUtility.AddKeyedToCurrentLanguage(key, value);
                             }
 
-                            Messages.Message("".Translate(), MessageTypeDefOf.PositiveEvent);
+                            Messages.Message("AT_Message_KeyedDone".Translate(), MessageTypeDefOf.PositiveEvent);
                         }, "AT_addKeyed", false, null);
                     }
                 });
@@ -131,6 +143,17 @@ namespace AutoTranslation
 
             Log.Message(AutoTranslation.LogPrefix + "finding untranslated Keyed done!");
             AutoTranslation.sw.Stop();
+        }
+
+
+        [HarmonyPatch(typeof(GUI)), HarmonyPatch(nameof(GUI.Label)), HarmonyPatch(new[] { typeof(Rect), typeof(string), typeof(GUIStyle) }), HarmonyPostfix]
+        public static void Post_GUI_Label(Rect position, string text)
+        {
+            if (!Settings.ShowOriginal) return;
+            if (ReverseTranslator.TryGetValue(text, out var value))
+            {
+                TooltipHandler.TipRegion(position, new TipSignal(value));
+            }
         }
     }
 }

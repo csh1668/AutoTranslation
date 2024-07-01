@@ -14,6 +14,7 @@ namespace AutoTranslation
         public static bool AppendTranslationCompleteTag = false;
         public static string APIKey = string.Empty;
         public static string TranslatorName = "Google";
+        public static bool ShowOriginal = false;
 
         internal static bool RequiresTokenKey = false;
         
@@ -24,12 +25,15 @@ namespace AutoTranslation
             Scribe_Values.Look(ref AppendTranslationCompleteTag, "AutoTranslation_AppendTranslationCompleteTag", false);
             Scribe_Values.Look(ref APIKey, "AutoTranslation_APIKey", string.Empty);
             Scribe_Values.Look(ref TranslatorName, "AutoTranslation_TranslatorName", "Google");
+            Scribe_Values.Look(ref ShowOriginal, "AutoTranslation_ShowOriginal", false);
         }
 
         public void DoSettingsWindowContents(Rect inRect)
         {
             var ls = new Listing_Standard();
             ls.Begin(inRect);
+
+            ////ls.CheckboxLabeled("AT_Setting_ShowOriginal", ref ShowOriginal);
 
             var h = ls.CurHeight;
             ls.End();

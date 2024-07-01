@@ -110,12 +110,12 @@ namespace AutoTranslation.Translators
                 return "en";
             }
 
-            switch (LanguageDatabase.activeLanguage.FriendlyNameEnglish)
+            switch (LanguageDatabase.activeLanguage.LegacyFolderName)
             {
                 case "Korean": return "ko";
                 case "Catalan": return "ca";
-                case "Simplified Chinese": return "zh-CN";
-                case "Traditional Chinese": return "zh-TW";
+                case "ChineseSimplified": return "zh-CN";
+                case "ChineseTraditional": return "zh-TW";
                 case "Czech": return "cs";
                 case "Danish": return "da";
                 case "Dutch": return "nl";
@@ -130,19 +130,20 @@ namespace AutoTranslation.Translators
                 case "Norwegian": return "no";
                 case "Polish": return "pl";
                 case "Portuguese": return "pt-PT";
-                case "Portuguese Brazilian": return "pt";
+                case "PortugueseBrazilian": return "pt";
                 case "Romanian": return "ro";
                 case "Russian": return "ru";
                 case "Slovak": return "sk";
-                case "Latin American Spanish":
+                case "SpanishLatin":
                 case "Spanish": return "es";
                 case "Swedish": return "sv";
                 case "Turkish": return "tr";
                 case "Ukrainian": return "uk";
                 case "English": return "en";
+                case "Vietnamese": return "vi";
                 default:
                     Log.Error(AutoTranslation.LogPrefix +
-                                $"Unsupported language: {LanguageDatabase.activeLanguage.FriendlyNameEnglish}");
+                                $"Unsupported language: {LanguageDatabase.activeLanguage.LegacyFolderName}");
                     return "en";
             }
         }

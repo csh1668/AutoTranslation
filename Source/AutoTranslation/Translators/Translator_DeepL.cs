@@ -14,10 +14,13 @@ namespace AutoTranslation.Translators
     internal class Translator_DeepL : ITranslator
     {
         private static readonly StringBuilder sb = new StringBuilder(1024);
+        private string _cachedTranslateLanguage;
 
         public string Name => "DeepL";
         public bool Ready { get; private set; }
         public bool RequiresKey => true;
+
+        private string TranslateLanguage => _cachedTranslateLanguage ?? (_cachedTranslateLanguage = GetTranslateLanguage());
 
         public void Prepare()
         {
@@ -38,7 +41,7 @@ namespace AutoTranslation.Translators
                     new MultipartFormDataSection("auth_key", Settings.APIKey),
                     new MultipartFormDataSection("text", text),
                     //new MultipartFormDataSection("source_lang", "EN"),
-                    new MultipartFormDataSection("target_lang", "KO"),
+                    new MultipartFormDataSection("target_lang", TranslateLanguage),
                     new MultipartFormDataSection("preserve_formatting", "true")
                 });
 
@@ -82,11 +85,11 @@ namespace AutoTranslation.Translators
                 return "en";
             }
 
-            switch (LanguageDatabase.activeLanguage.FriendlyNameEnglish)
+            switch (LanguageDatabase.activeLanguage.LegacyFolderName)
             {
                 case "Korean": return "KO";
                 //case "Catalan": return "ca";
-                case "Simplified Chinese": return "ZH";
+                case "ChineseSimplified": return "ZH";
                 //case "Traditional Chinese": return "zh-TW";
                 case "Czech": return "CS";
                 case "Danish": return "DA";
@@ -102,11 +105,11 @@ namespace AutoTranslation.Translators
                 case "Norwegian": return "NB";
                 case "Polish": return "PL";
                 case "Portuguese": return "PT-PT";
-                case "Portuguese Brazilian": return "PT-BR";
+                case "PortugueseBrazilian": return "PT-BR";
                 case "Romanian": return "RO";
                 case "Russian": return "RU";
                 case "Slovak": return "SK";
-                case "Latin American Spanish":
+                case "SpanishLatin":
                 case "Spanish": return "ES";
                 case "Swedish": return "SV";
                 case "Turkish": return "TR";
