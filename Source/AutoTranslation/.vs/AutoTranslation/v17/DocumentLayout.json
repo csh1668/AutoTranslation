@@ -3,36 +3,20 @@
   "WorkspaceRootPath": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{74803000-0D56-40EB-ACCB-B0A0A6674497}|AutoTranslation.csproj|C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\staticconstructor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{74803000-0D56-40EB-ACCB-B0A0A6674497}|AutoTranslation.csproj|solutionrelative:staticconstructor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{74803000-0D56-40EB-ACCB-B0A0A6674497}|AutoTranslation.csproj|c:\\games\\steam\\steamapps\\common\\rimworld\\mods\\autotranslation\\source\\autotranslation\\spaghetticodes.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{74803000-0D56-40EB-ACCB-B0A0A6674497}|AutoTranslation.csproj|solutionrelative:spaghetticodes.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{74803000-0D56-40EB-ACCB-B0A0A6674497}|AutoTranslation.csproj|c:\\games\\steam\\steamapps\\common\\rimworld\\mods\\autotranslation\\source\\autotranslation\\translatormanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{74803000-0D56-40EB-ACCB-B0A0A6674497}|AutoTranslation.csproj|solutionrelative:translatormanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{74803000-0D56-40EB-ACCB-B0A0A6674497}|AutoTranslation.csproj|C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\translators\\translator_google.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{74803000-0D56-40EB-ACCB-B0A0A6674497}|AutoTranslation.csproj|c:\\games\\steam\\steamapps\\common\\rimworld\\mods\\autotranslation\\source\\autotranslation\\translators\\translator_google.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{74803000-0D56-40EB-ACCB-B0A0A6674497}|AutoTranslation.csproj|solutionrelative:translators\\translator_google.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{74803000-0D56-40EB-ACCB-B0A0A6674497}|AutoTranslation.csproj|C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\definjectionutilitycustom.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{74803000-0D56-40EB-ACCB-B0A0A6674497}|AutoTranslation.csproj|solutionrelative:definjectionutilitycustom.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{74803000-0D56-40EB-ACCB-B0A0A6674497}|AutoTranslation.csproj|C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\helpers.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{74803000-0D56-40EB-ACCB-B0A0A6674497}|AutoTranslation.csproj|solutionrelative:helpers.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{74803000-0D56-40EB-ACCB-B0A0A6674497}|AutoTranslation.csproj|C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\settings.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{74803000-0D56-40EB-ACCB-B0A0A6674497}|AutoTranslation.csproj|solutionrelative:settings.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{74803000-0D56-40EB-ACCB-B0A0A6674497}|AutoTranslation.csproj|C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\patches.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{74803000-0D56-40EB-ACCB-B0A0A6674497}|AutoTranslation.csproj|c:\\games\\steam\\steamapps\\common\\rimworld\\mods\\autotranslation\\source\\autotranslation\\patches.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{74803000-0D56-40EB-ACCB-B0A0A6674497}|AutoTranslation.csproj|solutionrelative:patches.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{74803000-0D56-40EB-ACCB-B0A0A6674497}|AutoTranslation.csproj|C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\cachefiletool.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{74803000-0D56-40EB-ACCB-B0A0A6674497}|AutoTranslation.csproj|solutionrelative:cachefiletool.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -42,45 +26,20 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 6,
+          "SelectedChildIndex": 2,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "Translator_Google.cs",
-              "DocumentMoniker": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\Translators\\Translator_Google.cs",
-              "RelativeDocumentMoniker": "Translators\\Translator_Google.cs",
-              "ToolTip": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\Translators\\Translator_Google.cs",
-              "RelativeToolTip": "Translators\\Translator_Google.cs",
-              "ViewState": "AQIAAHQAAAAAAAAAAAAiwIQAAAApAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-06-30T01:25:57.939Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
               "DocumentIndex": 3,
-              "Title": "DefInjectionUtilityCustom.cs",
-              "DocumentMoniker": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\DefInjectionUtilityCustom.cs",
-              "RelativeDocumentMoniker": "DefInjectionUtilityCustom.cs",
-              "ToolTip": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\DefInjectionUtilityCustom.cs",
-              "RelativeToolTip": "DefInjectionUtilityCustom.cs",
-              "ViewState": "AQIAAAkAAAAAAAAAAAAiwH8AAAAtAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-06-29T13:42:13.574Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 6,
               "Title": "Patches.cs",
               "DocumentMoniker": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\Patches.cs",
               "RelativeDocumentMoniker": "Patches.cs",
               "ToolTip": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\Patches.cs",
               "RelativeToolTip": "Patches.cs",
-              "ViewState": "AQIAABQAAAAAAAAAAAAUwJsAAAANAAAA",
+              "ViewState": "AQIAABEAAAAAAAAAAAAUwDEAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-06-29T12:53:04.569Z"
+              "WhenOpened": "2024-07-02T06:03:07.421Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -90,59 +49,36 @@
               "RelativeDocumentMoniker": "TranslatorManager.cs",
               "ToolTip": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\TranslatorManager.cs",
               "RelativeToolTip": "TranslatorManager.cs",
-              "ViewState": "AQIAAHoAAAAAAAAAAAAiwJoAAAAVAAAA",
+              "ViewState": "AQIAACgAAAAAAAAAAAAkwEAAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-06-29T12:51:56.243Z",
+              "WhenOpened": "2024-07-02T06:02:12.53Z",
               "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 5,
-              "Title": "Settings.cs",
-              "DocumentMoniker": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\Settings.cs",
-              "RelativeDocumentMoniker": "Settings.cs",
-              "ToolTip": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\Settings.cs",
-              "RelativeToolTip": "Settings.cs",
-              "ViewState": "AQIAAAAAAAAAAAAAAAAiwCAAAAAsAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-06-29T12:35:33.323Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 7,
-              "Title": "CacheFileTool.cs",
-              "DocumentMoniker": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\CacheFileTool.cs",
-              "RelativeDocumentMoniker": "CacheFileTool.cs",
-              "ToolTip": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\CacheFileTool.cs",
-              "RelativeToolTip": "CacheFileTool.cs",
-              "ViewState": "AQIAAAAAAAAAAAAAAAAAAB0AAAAoAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-06-29T11:30:12.316Z"
             },
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "StaticConstructor.cs",
-              "DocumentMoniker": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\StaticConstructor.cs",
-              "RelativeDocumentMoniker": "StaticConstructor.cs",
-              "ToolTip": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\StaticConstructor.cs",
-              "RelativeToolTip": "StaticConstructor.cs",
-              "ViewState": "AQIAAAAAAAAAAAAAAAAAABQAAAAJAAAA",
+              "Title": "SpaghettiCodes.cs",
+              "DocumentMoniker": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\SpaghettiCodes.cs",
+              "RelativeDocumentMoniker": "SpaghettiCodes.cs",
+              "ToolTip": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\SpaghettiCodes.cs",
+              "RelativeToolTip": "SpaghettiCodes.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAcwBUAAAANAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-06-28T12:44:52.78Z",
+              "WhenOpened": "2024-07-02T05:56:33.421Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "Helpers.cs",
-              "DocumentMoniker": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\Helpers.cs",
-              "RelativeDocumentMoniker": "Helpers.cs",
-              "ToolTip": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\Helpers.cs",
-              "RelativeToolTip": "Helpers.cs",
-              "ViewState": "AQIAAAAAAAAAAAAAAAAAADEAAAAAAAAA",
+              "DocumentIndex": 2,
+              "Title": "Translator_Google.cs",
+              "DocumentMoniker": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\Translators\\Translator_Google.cs",
+              "RelativeDocumentMoniker": "Translators\\Translator_Google.cs",
+              "ToolTip": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AutoTranslation\\Source\\AutoTranslation\\Translators\\Translator_Google.cs",
+              "RelativeToolTip": "Translators\\Translator_Google.cs",
+              "ViewState": "AQIAABAAAAAAAAAAAAA4wD0AAAAJAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-06-27T13:00:33.996Z"
+              "WhenOpened": "2024-06-30T01:25:57.939Z",
+              "EditorCaption": ""
             }
           ]
         }

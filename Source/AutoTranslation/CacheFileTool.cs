@@ -15,8 +15,8 @@ namespace AutoTranslation
         {
             get
             {
-                string path = Path.Combine(GenFilePaths.SaveDataFolderPath, "AutoTranslation");
-                DirectoryInfo directoryInfo = new DirectoryInfo(path);
+                var path = Path.Combine(GenFilePaths.SaveDataFolderPath, "AutoTranslation");
+                var directoryInfo = new DirectoryInfo(path);
                 if (!directoryInfo.Exists)
                 {
                     directoryInfo.Create();

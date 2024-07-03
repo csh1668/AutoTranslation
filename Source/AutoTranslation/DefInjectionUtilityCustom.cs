@@ -43,7 +43,9 @@ namespace AutoTranslation
                             if (injectionsByNormalizedPath.TryGetValue(normalizedPath, out var defInjection) && !defInjection.IsFullListInjection)
                             {
                                 if (defInjection.isPlaceholder)
+                                {
                                     flag = true;
+                                }
                             }
                             else
                             {
@@ -52,6 +54,10 @@ namespace AutoTranslation
 
                             if (flag && DefInjectionUtility.ShouldCheckMissingInjection(value, fi, def))
                             {
+                                if (def.defName == "Tinimar_flakvest")
+                                {
+                                    Log.Message($"{injectionsByNormalizedPath.Where(x => x.Key.ToLower().Contains("tinimar")).Select(x => x.Key).ToLineList()}");
+                                }
                                 callBack(new DefInjectionUntranslatedParams(normalizedPath, suggestedPath, value,
                                     parentObject, fi, def));
                             }

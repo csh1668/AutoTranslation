@@ -31,6 +31,11 @@ namespace AutoTranslation.Translators
 
         public bool TryTranslate(string text, out string translated)
         {
+            if (string.IsNullOrEmpty(text))
+            {
+                translated = string.Empty;
+                return true;
+            }
             try
             {
                 string url = $"https://api-free.deepl.com/v2/translate";
@@ -82,7 +87,7 @@ namespace AutoTranslation.Translators
             if (LanguageDatabase.activeLanguage == null)
             {
                 Log.Warning(AutoTranslation.LogPrefix + "activeLanguage was null");
-                return "en";
+                return "EN";
             }
 
             switch (LanguageDatabase.activeLanguage.LegacyFolderName)

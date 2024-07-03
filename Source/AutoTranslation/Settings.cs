@@ -33,7 +33,7 @@ namespace AutoTranslation
             var ls = new Listing_Standard();
             ls.Begin(inRect);
 
-            ////ls.CheckboxLabeled("AT_Setting_ShowOriginal", ref ShowOriginal);
+            ls.CheckboxLabeled("AT_Setting_ShowOriginal".Translate(), ref ShowOriginal, "AT_Setting_ShowOriginal_Tooltip".Translate());
 
             var h = ls.CurHeight;
             ls.End();

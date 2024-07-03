@@ -62,6 +62,7 @@ namespace AutoTranslation
             }
 
             _cacheCount = CachedTranslations.Count;
+
         }
 
         //public static string TranslateSync(string orig)
@@ -144,11 +145,9 @@ namespace AutoTranslation
 
                         if (success)
                         {
-                            translated = Regex.Replace(
-                                translated,
-                                @"\\[Uu]([0-9A-Fa-f]{4})",
-                                m => char.ToString(
-                                    (char)ushort.Parse(m.Groups[1].Value, NumberStyles.AllowHexSpecifier)));
+                            translated = Regex.Replace(translated, "\\[Uu]([0-9A-Fa-f]{4})",
+                                    m => char.ToString((char)ushort.Parse(m.Groups[1].Value, NumberStyles.AllowHexSpecifier)))
+                                .Replace("\\\"", "\"");
                             //translated = UnityWebRequest.UnEscapeURL(translated, Encoding.UTF8).Trim();
                         }
                         pair.Value(translated, success);
@@ -157,7 +156,7 @@ namespace AutoTranslation
                 }
             }).ContinueWith(t =>
             {
-                Log.Message($"Translation thread was killed! {t.Exception?.Message}");
+                Log.Warning($"Translation thread was killed! {t.Exception?.Message}");
             });
 
             _cacheSaver = new Timer(state =>
@@ -192,7 +191,7 @@ namespace AutoTranslation
 
         public static void Translate(string orig, string additionalKey, Action<string> callBack)
         {
-            if (!Ready)
+            if (!Ready || string.IsNullOrEmpty(orig))
             {
                 callBack(orig);
                 return;

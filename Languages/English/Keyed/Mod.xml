@@ -2,6 +2,9 @@
 <LanguageData>
     <AT_Name>Auto Translation</AT_Name>
 
+    <AT_Setting_ShowOriginal>Hover to show some original text (default: X):</AT_Setting_ShowOriginal>
+    <AT_Setting_ShowOriginal_Tooltip>Hovering the mouse over a translation will display the original text. However, due to limitations of the system, not all translations are supported.</AT_Setting_ShowOriginal_Tooltip>
+
     <AT_Setting>::Translation settings::</AT_Setting>
     <AT_Setting_Note>Note: The settings below require a restart</AT_Setting_Note>
     <AT_Setting_SelectEngine>Select a translation engine (default: Google):</AT_Setting_SelectEngine>

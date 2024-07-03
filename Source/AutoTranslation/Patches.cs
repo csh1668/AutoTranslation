@@ -44,14 +44,18 @@ namespace AutoTranslation
             AutoTranslation.sw.Start();
             Log.Message(AutoTranslation.LogPrefix + "finding untranslated DefInjected...");
 
+            // TODO: DELETE THIS
+            SpaghettiCodes.SpanishPsychology();
+
+
             _defInjectedMissingloaded = true;
             DefInjectionUtilityCustom.FindMissingDefInjection((@params =>
             {
                 if (@params.field.Name.ToLower().Contains("path")) return;
 
+                defInjectedMissing.Add(@params);
                 if (!@params.isCollection)
                 {
-                    defInjectedMissing.Add(@params);
                     TranslatorManager.Translate(@params.original, t =>
                     {
                         @params.translated = t;
@@ -63,7 +67,6 @@ namespace AutoTranslation
                 }
                 else
                 {
-                    defInjectedMissing.Add(@params);
                     foreach (var original in @params.originalCollection)
                     {
                         if (original.Contains("->"))

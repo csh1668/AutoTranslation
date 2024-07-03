@@ -5,3 +5,7 @@ C:\Games\Steam\steamapps\common\RimWorld\Mods\AutoTranslation\Source\AutoTransla
 C:\Games\Steam\steamapps\common\RimWorld\Mods\AutoTranslation\Source\AutoTranslation\obj\Debug\AutoTranslation.dll
 C:\Games\Steam\steamapps\common\RimWorld\Mods\AutoTranslation\Source\AutoTranslation\obj\Debug\AutoTranslation.pdb
 C:\Games\Steam\steamapps\common\RimWorld\Mods\AutoTranslation\Source\AutoTranslation\obj\Debug\AutoTran.7F57112A.Up2Date
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AutoTranslation\1.5\Assemblies\AutoTranslation.dll
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AutoTranslation\1.5\Assemblies\AutoTranslation.pdb
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AutoTranslation\1.4\Assemblies\AutoTranslation.dll
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AutoTranslation\1.4\Assemblies\AutoTranslation.pdb

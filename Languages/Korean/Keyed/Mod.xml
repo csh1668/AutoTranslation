@@ -2,6 +2,9 @@
 <LanguageData>
     <AT_Name>자동 번역 모드</AT_Name>
 
+    <AT_Setting_ShowOriginal>마우스를 올려놓아 일부 원문 보이기 (기본: X):</AT_Setting_ShowOriginal>
+    <AT_Setting_ShowOriginal_Tooltip>마우스를 번역문 위에 올려놓으면 원문을 표시합니다. 림월드 시스템의 한계로 인해, 모든 번역문이 지원되지 않습니다.</AT_Setting_ShowOriginal_Tooltip>
+
     <AT_Setting>::번역 설정::</AT_Setting>
     <AT_Setting_Note>주의: 아래 설정들은 재시작을 요구합니다</AT_Setting_Note>
     <AT_Setting_SelectEngine>번역 엔진 선택 (기본: Google):</AT_Setting_SelectEngine>
