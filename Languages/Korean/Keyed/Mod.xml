@@ -3,7 +3,8 @@
     <AT_Name>자동 번역 모드</AT_Name>
 
     <AT_Setting_ShowOriginal>마우스를 올려놓아 일부 원문 보이기 (기본: X):</AT_Setting_ShowOriginal>
-    <AT_Setting_ShowOriginal_Tooltip>마우스를 번역문 위에 올려놓으면 원문을 표시합니다. 림월드 시스템의 한계로 인해, 모든 번역문이 지원되지 않습니다.</AT_Setting_ShowOriginal_Tooltip>
+    <AT_Setting_ShowOriginal_Tooltip>마우스를 번역문 위에 올려놓으면 원문을 표시합니다. 림월드 시스템의 한계로 인해, 모든 번역문이 지원되지
+        않습니다.</AT_Setting_ShowOriginal_Tooltip>
 
     <AT_Setting>::번역 설정::</AT_Setting>
     <AT_Setting_Note>주의: 아래 설정들은 재시작을 요구합니다</AT_Setting_Note>
@@ -21,7 +22,13 @@
     <AT_Setting_Cached>저장된 번역 데이터: </AT_Setting_Cached>
     <AT_Setting_NotYet>아직 번역되지 않은 데이터: </AT_Setting_NotYet>
     <AT_Setting_OpenDir>번역 데이터가 저장된 폴더 열기</AT_Setting_OpenDir>
+    <AT_Setting_WhiteList>번역할 모드 선택 (DefInjected에만 영향을 주며, 실시간으로 반영됩니다)</AT_Setting_WhiteList>
+    <AT_Setting_ResetTranslationCache>저장된 번역 데이터 삭제</AT_Setting_ResetTranslationCache>
+    <AT_Setting_ToggleAll>전체 켜기/끄기</AT_Setting_ToggleAll>
+    
 
     <AT_Message_ResetDefCache>Def 캐시가 초기화 되었습니다!</AT_Message_ResetDefCache>
     <AT_Message_KeyedDone>모든 Keyed를 번역 완료하였습니다!</AT_Message_KeyedDone>
+    <AT_Message_ResetTranslationCache>번역 데이터를 삭제하였습니다. 번역을 다시 하기 위해 게임을 재시작 하세요.</AT_Message_ResetTranslationCache>
+    <AT_Message_WhiteList_Failed>아직 번역이 진행 중이라 실시간으로 반영되지 않습니다. 변경 사항이 적용되기 위해서는 번역이 완료된 후 재시도 하거나, 게임을 재시작 해야 합니다.</AT_Message_WhiteList_Failed>
 </LanguageData>

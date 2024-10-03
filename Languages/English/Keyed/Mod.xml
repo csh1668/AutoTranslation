@@ -21,7 +21,12 @@
     <AT_Setting_Cached>Cached translations: </AT_Setting_Cached>
     <AT_Setting_NotYet>Not translated yet: </AT_Setting_NotYet>
     <AT_Setting_OpenDir>Open the folder where the translation caches are stored</AT_Setting_OpenDir>
+    <AT_Setting_WhiteList>Select mods to translate (only affects DefInjected, and is applied in real-time)</AT_Setting_WhiteList>
+    <AT_Setting_ResetTranslationCache>Delete the translation caches</AT_Setting_ResetTranslationCache>
+    <AT_Setting_ToggleAll>Toggle all</AT_Setting_ToggleAll>
 
     <AT_Message_ResetDefCache>Def cache has been initialized!</AT_Message_ResetDefCache>
     <AT_Message_KeyedDone>Translated all untranslated Keyed!</AT_Message_KeyedDone>
+    <AT_Message_ResetTranslationCache>The translation caches are deleted, please restart the game to start the translation again.</AT_Message_ResetTranslationCache>
+    <AT_Message_WhiteList_Failed>The translation is still in progress and will not be applied in real-time. You will need to retry after the translation is complete, or restart the game, for the changes to take effect.</AT_Message_WhiteList_Failed>
 </LanguageData>

@@ -42,5 +42,12 @@ namespace AutoTranslation
             };
             activeLang.keyedReplacements.SetOrAdd(k, replacement);
         }
+
+        public static void RemoveKeyedFromCurrentLanguage(string k)
+        {
+            var activeLang = LanguageDatabase.activeLanguage;
+
+            activeLang?.keyedReplacements.Remove(k);
+        }
     }
 }

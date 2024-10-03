@@ -39,6 +39,7 @@ namespace AutoTranslation
                     {
                         if (!isCollection)
                         {
+
                             bool flag = false;
                             if (injectionsByNormalizedPath.TryGetValue(normalizedPath, out var defInjection) && !defInjection.IsFullListInjection)
                             {
@@ -54,10 +55,6 @@ namespace AutoTranslation
 
                             if (flag && DefInjectionUtility.ShouldCheckMissingInjection(value, fi, def))
                             {
-                                if (def.defName == "Tinimar_flakvest")
-                                {
-                                    Log.Message($"{injectionsByNormalizedPath.Where(x => x.Key.ToLower().Contains("tinimar")).Select(x => x.Key).ToLineList()}");
-                                }
                                 callBack(new DefInjectionUntranslatedParams(normalizedPath, suggestedPath, value,
                                     parentObject, fi, def));
                             }
@@ -194,7 +191,11 @@ namespace AutoTranslation
 
         private static readonly HashSet<Type> blackListTypes = new HashSet<Type>
         {
-            typeof(SoundDef), typeof(EffecterDef), typeof(PawnRenderTreeDef), typeof(PawnRenderNodeTagDef)
+            typeof(SoundDef), typeof(EffecterDef),
+#if RW14
+#else
+            typeof(PawnRenderTreeDef), typeof(PawnRenderNodeTagDef)
+#endif
         };
 
         private static readonly HashSet<string> blackListFields = new HashSet<string>
@@ -227,6 +228,9 @@ namespace AutoTranslation
             public ConcurrentDictionary<string, string> translatedCollection;
 
             public bool isCollection;
+
+            private bool _injected;
+
             public DefInjectionUntranslatedParams(string normalizedPath, string suggestedPath, string original, object parentObject, FieldInfo field, Def def)
             {
                 this.normalizedPath = normalizedPath;
@@ -254,17 +258,25 @@ namespace AutoTranslation
             }
 
 
-            public void InjectIntoDef()
+            public void InjectTranslation()
             {
+                if (_injected)
+                {
+                    Log.Message("Already injected...");
+                    return;
+                }
+
                 if (!isCollection)
                 {
+                    _injected = !_injected;
                     field.SetValue(parentObject, translated);
                     return;
                 }
                 lock (translatedCollection)
                 {
-                    if (originalCollection.Count > 0 && originalCollection.Count == translatedCollection.Count)
+                    if (originalCollection.Count == translatedCollection.Count)
                     {
+                        _injected = !_injected;
                         var realList = (List<string>)field.GetValue(parentObject);
                         for (int i = 0; i < realList.Count; i++)
                         {
@@ -277,6 +289,41 @@ namespace AutoTranslation
                     }
                 }
                 
+            }
+
+            public void UndoInject()
+            {
+                if (!_injected)
+                {
+                    return;
+                }
+
+
+                if (!isCollection)
+                {
+                    field.SetValue(parentObject, original);
+                    _injected = !_injected;
+                    return;
+                }
+
+                lock (translatedCollection)
+                {
+                    if (originalCollection.Count > 0)
+                    {
+                        var realList = (List<string>)field.GetValue(parentObject);
+                        if (realList.Count != originalCollection.Count)
+                        {
+                            Log.Warning(AutoTranslation.LogPrefix +
+                                        $"Wrong collection size {realList.Count}vs{originalCollection.Count}, {def.defName}:{field.Name}");
+                            return;
+                        }
+                        for (int i = 0; i < realList.Count; i++)
+                        {
+                            realList[i] = originalCollection[i];
+                        }
+                        _injected = !_injected;
+                    }
+                }
             }
         }
     }

@@ -30,6 +30,15 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug1.4|AnyCPU'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>..\..\1.4\Assemblies\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;RW14</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="0Harmony, Version=2.2.2.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -75,9 +84,15 @@
     <Compile Include="StaticConstructor.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="CacheFileTool.cs" />
+    <Compile Include="InjectionManager.cs" />
     <Compile Include="TranslatorManager.cs" />
     <Compile Include="Translators\ITranslator.cs" />
+    <Compile Include="Translators\Translator_Claude.cs" />
+    <Compile Include="Translators\Translator_DeepL_Pro.cs" />
     <Compile Include="Translators\Translator_DeepL.cs" />
+    <Compile Include="Translators\Translator_GeminiBase.cs" />
+    <Compile Include="Translators\Translator_GeminiFlash.cs" />
+    <Compile Include="Translators\Translator_GeminiPro.cs" />
     <Compile Include="Translators\Translator_Google.cs" />
   </ItemGroup>
   <ItemGroup />

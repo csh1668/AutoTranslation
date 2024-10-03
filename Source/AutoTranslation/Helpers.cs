@@ -5,13 +5,16 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Xml;
+using AutoTranslation.Translators;
 
 namespace AutoTranslation
 {
-    public static class Helpers
+    internal static class Helpers
     {
-        public static string FitFormatCount(this string str, int cnt)
+        public static string FitFormat(this string str, int cnt)
         {
+            //str = str.Replace("\"{", "{").Replace("}\"", "}")
+            //    .Replace("「{", "{").Replace("}」", "}");
             var pattern = @"\{\d+\}";
             var matches = Regex.Matches(str, pattern);
             var curCnt = matches.Count;
@@ -108,5 +111,27 @@ namespace AutoTranslation
         }
 
         #endregion
+
+        public static string EscapeJsonString(this string input)
+        {
+            var sb = new StringBuilder(input.Length);
+            foreach (var c in input)
+            {
+                switch (c)
+                {
+                    case '\"': sb.Append("\\\""); break;
+                    case '\\': sb.Append("\\\\"); break;
+                    case '\b': sb.Append("\\b"); break;
+                    case '\f': sb.Append("\\f"); break;
+                    case '\n': sb.Append("\\n"); break;
+                    case '\r': sb.Append("\\r"); break;
+                    case '\t': sb.Append("\\t"); break;
+                    default:
+                        sb.Append(c);
+                        break;
+                }
+            }
+            return sb.ToString();
+        }
     }
 }

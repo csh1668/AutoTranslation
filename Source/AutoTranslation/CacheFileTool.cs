@@ -31,7 +31,9 @@ namespace AutoTranslation
             doc.AppendElement(name, e =>
             {
                 e.AppendAttribute("Language", LanguageDatabase.activeLanguage?.FriendlyNameEnglish ?? "NULL");
-                foreach (var (k, v) in cache)
+                var lst = cache.ToList();
+                lst.Sort((a, b) => string.Compare(a.Key, b.Key, StringComparison.Ordinal));
+                foreach (var (k, v) in lst)
                 {
                     if (string.IsNullOrEmpty(k) || string.IsNullOrEmpty(v))
                         continue;

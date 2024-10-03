@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine.Diagnostics;
 using UnityEngine.Networking;
@@ -15,12 +17,13 @@ namespace AutoTranslation.Translators
     {
         private static readonly StringBuilder sb = new StringBuilder(1024);
         private string _cachedTranslateLanguage;
+        protected virtual string url => $"https://api-free.deepl.com/v2/translate";
 
-        public string Name => "DeepL";
+        public virtual string Name => "DeepL";
         public bool Ready { get; private set; }
         public bool RequiresKey => true;
 
-        private string TranslateLanguage => _cachedTranslateLanguage ?? (_cachedTranslateLanguage = GetTranslateLanguage());
+        protected string TranslateLanguage => _cachedTranslateLanguage ?? (_cachedTranslateLanguage = GetTranslateLanguage());
 
         public void Prepare()
         {
@@ -38,35 +41,23 @@ namespace AutoTranslation.Translators
             }
             try
             {
-                string url = $"https://api-free.deepl.com/v2/translate";
-
-
-                var request = UnityWebRequest.Post(url, new List<IMultipartFormSection>()
+                translated = Parse(GetResponseUnsafe(url, new List<IMultipartFormSection>()
                 {
                     new MultipartFormDataSection("auth_key", Settings.APIKey),
-                    new MultipartFormDataSection("text", text),
+                    new MultipartFormDataSection("text", EscapePlaceholders(text)),
                     //new MultipartFormDataSection("source_lang", "EN"),
                     new MultipartFormDataSection("target_lang", TranslateLanguage),
-                    new MultipartFormDataSection("preserve_formatting", "true")
-                });
+                    new MultipartFormDataSection("preserve_formatting", "true"),
+                    new MultipartFormDataSection("tag_handling", "xml"),
+                    new MultipartFormDataSection("ignore_tags", "x")
+                }), out var detectedLang);
+                translated = detectedLang == TranslateLanguage ? text : UnEscapePlaceholders(translated);
 
-                var asyncOperation = request.SendWebRequest();
-                while (!asyncOperation.isDone)
-                {
-                    Task.Delay(1);
-                }
-
-                if (request.isNetworkError || request.isHttpError)
-                {
-                    throw new Exception("Web error");
-                }
-
-                translated = Parse(request.downloadHandler.text);
                 return true;
             }
             catch (Exception e)
             {
-                var msg = AutoTranslation.LogPrefix + $"{Name}, translate failed. reason: {e.Message}";
+                var msg = AutoTranslation.LogPrefix + $"{Name}, translate failed. reason: {e.GetType()}|{e.Message}";
                 Log.WarningOnce(msg, msg.GetHashCode());
             }
 
@@ -74,12 +65,47 @@ namespace AutoTranslation.Translators
             return false;
         }
 
-        private static string Parse(string text)
+
+        public static string GetResponseUnsafe(string url, List<IMultipartFormSection> form)
         {
-            var textKey = "\"text\":\"";
-            var startIdx = text.IndexOf(textKey, StringComparison.Ordinal) + textKey.Length;
-            var endIdx = text.LastIndexOf('\"');
+            var request = UnityWebRequest.Post(url, form);
+
+            var asyncOperation = request.SendWebRequest();
+            while (!asyncOperation.isDone)
+            {
+                Thread.Sleep(1);
+            }
+
+            if (request.isNetworkError || request.isHttpError)
+            {
+                throw new Exception($"Web error: {request.error}");
+            }
+
+            return request.downloadHandler.text;
+        }
+        public static string Parse(string text, out string detectedLang)
+        {
+            const string detectKey = "\"detected_source_language\":\"";
+            var startIdx = text.IndexOf(detectKey, StringComparison.Ordinal) + detectKey.Length;
+            var endIdx = startIdx + 1;
+            for (; endIdx < text.Length; endIdx++) if (text[endIdx] == '\"') break;
+            detectedLang = text.Substring(startIdx, endIdx - startIdx);
+
+            const string textKey = "\"text\":\"";
+            startIdx = text.IndexOf(textKey, StringComparison.Ordinal) + textKey.Length;
+            endIdx = text.LastIndexOf('\"');
+
             return text.Substring(startIdx, endIdx - startIdx);
+        }
+
+        public static string EscapePlaceholders(string text)
+        {
+            return Regex.Replace(text, @"[\{](.*?)[\}]", match => $"<x>{match.Value}</x>");
+        }
+
+        public static string UnEscapePlaceholders(string text)
+        {
+            return text.Replace("<x>{", "{").Replace("}</x>", "}");
         }
 
         private static string GetTranslateLanguage()
@@ -123,7 +149,7 @@ namespace AutoTranslation.Translators
                 default:
                     Log.Error(AutoTranslation.LogPrefix +
                                 $"Unsupported language: {LanguageDatabase.activeLanguage.FriendlyNameEnglish}, Please change the Translator.");
-                    return "en";
+                    return "EN";
             }
         }
     }

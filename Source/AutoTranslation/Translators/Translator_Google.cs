@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.NetworkInformation;
 using System.Security.Policy;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using UnityEngine.Diagnostics;
 using UnityEngine.Networking;
@@ -49,12 +50,13 @@ namespace AutoTranslation.Translators
             try
             {
                 var url = string.Format(urlFormat, StartLanguage, TranslateLanguage, UnityWebRequest.EscapeURL(text));
-                translated = ParseResult(GetResponseUnsafe(url));
+                var t = ParseResult(GetResponseUnsafe(url), out var detectedLang);
+                translated = detectedLang == TranslateLanguage ? text : t;
                 return true;
             }
             catch (Exception e)
             {
-                var msg = AutoTranslation.LogPrefix + $"{Name}, translate failed. reason: {e.Message}";
+                var msg = AutoTranslation.LogPrefix + $"{Name}, translate failed. reason: {e.GetType()}|{e.Message}";
                 Log.WarningOnce(msg + $", target: {text}", msg.GetHashCode());
                 translated = text;
                 return false;
@@ -85,7 +87,7 @@ namespace AutoTranslation.Translators
             }
         }
 
-        private static string ParseResult(string text)
+        internal static string ParseResult(string text, out string detectedLang)
         {
             sb.Clear();
             var flag = false;
@@ -99,9 +101,48 @@ namespace AutoTranslation.Translators
                 }
                 else if (flag) sb.Append(text[i]);
             }
+
+            var pattern = @"\[""([^""]+)""\]\]\]";
+            var match = Regex.Match(text, pattern);
+            detectedLang = "aaaaa"; /*match.Success ? match.Groups[1].Value : string.Empty;*/
+
             return sb.ToString();
         }
 
+
+        private static readonly Dictionary<string, string> TranslateLanguageGetter = new Dictionary<string, string>
+        {
+            ["Korean"] = "ko",
+            ["Catalan"] = "ca",
+            ["ChineseSimplified"] = "zh-CN",
+            ["ChineseTraditional"] = "zh-TW",
+            ["Czech"] = "cs",
+            ["Danish"] = "da",
+            ["Dutch"] = "nl",
+            ["Estonian"] = "et",
+            ["Finnish"] = "fi",
+            ["French"] = "fr",
+            ["German"] = "de",
+            ["Greek"] = "el",
+            ["Hungarian"] = "hu",
+            ["Italian"] = "it",
+            ["Japanese"] = "ja",
+            ["Norwegian"] = "no",
+            ["Polish"] = "pl",
+            ["Portuguese"] = "pt-PT",
+            ["PortugueseBrazilian"] = "pt",
+            ["Romanian"] = "ro",
+            ["Russian"] = "ru",
+            ["Slovak"] = "sk",
+            ["SpanishLatin"] = "es",
+            ["Spanish"] = "es",
+            ["Swedish"] = "sv",
+            ["Turkish"] = "tr",
+            ["Ukrainian"] = "uk",
+            ["English"] = "en",
+            ["Vietnamese"] = "vi",
+            ["Thai"] = "th"
+        };
         private static string GetTranslateLanguage()
         {
             if (LanguageDatabase.activeLanguage == null)
@@ -110,42 +151,13 @@ namespace AutoTranslation.Translators
                 return "en";
             }
 
-            switch (LanguageDatabase.activeLanguage.LegacyFolderName)
+            if (!TranslateLanguageGetter.TryGetValue(LanguageDatabase.activeLanguage.LegacyFolderName, out var res))
             {
-                case "Korean": return "ko";
-                case "Catalan": return "ca";
-                case "ChineseSimplified": return "zh-CN";
-                case "ChineseTraditional": return "zh-TW";
-                case "Czech": return "cs";
-                case "Danish": return "da";
-                case "Dutch": return "nl";
-                case "Estonian": return "et";
-                case "Finnish": return "fi";
-                case "French": return "fr";
-                case "German": return "de";
-                case "Greek": return "el";
-                case "Hungarian": return "hu";
-                case "Italian": return "it";
-                case "Japanese": return "ja";
-                case "Norwegian": return "no";
-                case "Polish": return "pl";
-                case "Portuguese": return "pt-PT";
-                case "PortugueseBrazilian": return "pt";
-                case "Romanian": return "ro";
-                case "Russian": return "ru";
-                case "Slovak": return "sk";
-                case "SpanishLatin":
-                case "Spanish": return "es";
-                case "Swedish": return "sv";
-                case "Turkish": return "tr";
-                case "Ukrainian": return "uk";
-                case "English": return "en";
-                case "Vietnamese": return "vi";
-                default:
-                    Log.Error(AutoTranslation.LogPrefix +
-                                $"Unsupported language: {LanguageDatabase.activeLanguage.LegacyFolderName}");
-                    return "en";
+                Log.Error(AutoTranslation.LogPrefix + $"Unsupported language: {LanguageDatabase.activeLanguage.LegacyFolderName}");
+                res = "en";
             }
+
+            return res;
         }
     }
 }

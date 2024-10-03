@@ -25,6 +25,7 @@ namespace AutoTranslation
         internal static readonly ConcurrentQueue<KeyValuePair<string, Action<string, bool>>> _queue = new ConcurrentQueue<KeyValuePair<string, Action<string, bool>>>();
         internal static readonly List<ITranslator> translators = new List<ITranslator>();
         internal static int workCnt;
+        internal static int _cacheCount;
 
         private static readonly ConcurrentDictionary<string, byte> _inQueue = new ConcurrentDictionary<string, byte>();
         private static Task _translationThread;
@@ -32,7 +33,6 @@ namespace AutoTranslation
         private static readonly Regex StringFormatSymbolsRegex = new Regex("{.*?}");
         private static readonly StringBuilder sb = new StringBuilder(1024);
         private static readonly object lockObj = new object();
-        private static int _cacheCount = 0;
 
         public static void Prepare()
         {
@@ -110,6 +110,13 @@ namespace AutoTranslation
             return handle;
         }
 
+        internal static string PolishText(string text)
+        {
+            return Regex.Unescape(Regex.Replace(text, "\\[Uu]([0-9A-Fa-f]{4})",
+                    m => char.ToString((char)ushort.Parse(m.Groups[1].Value, NumberStyles.AllowHexSpecifier)))
+                .Replace("\\\"", "\"")).Trim();
+        }
+
         public static void StartThread()
         {
             if (CurrentTranslator == null)
@@ -127,7 +134,6 @@ namespace AutoTranslation
                         if (!_queue.TryDequeue(out var pair)) continue;
 
                         _inQueue.TryRemove(pair.Key, out _);
-                        workCnt++;
                         var translated = string.Empty;
                         var success = true;
                         if (pair.Key.Length > 200)
@@ -145,11 +151,10 @@ namespace AutoTranslation
 
                         if (success)
                         {
-                            translated = Regex.Replace(translated, "\\[Uu]([0-9A-Fa-f]{4})",
-                                    m => char.ToString((char)ushort.Parse(m.Groups[1].Value, NumberStyles.AllowHexSpecifier)))
-                                .Replace("\\\"", "\"");
+                            translated = PolishText(translated);
                             //translated = UnityWebRequest.UnEscapeURL(translated, Encoding.UTF8).Trim();
                         }
+                        workCnt++;
                         pair.Value(translated, success);
                     }
                     Thread.Sleep(1000);
@@ -191,7 +196,7 @@ namespace AutoTranslation
 
         public static void Translate(string orig, string additionalKey, Action<string> callBack)
         {
-            if (!Ready || string.IsNullOrEmpty(orig))
+            if (string.IsNullOrEmpty(orig))
             {
                 callBack(orig);
                 return;
@@ -200,6 +205,12 @@ namespace AutoTranslation
             if (CachedTranslations.TryGetValue(key, out var translation))
             {
                 callBack(Prefs.DevMode && Settings.AppendTranslationCompleteTag && orig != translation ? "::TEST::" + translation : translation);
+                return;
+            }
+
+            if (!Ready)
+            {
+                callBack(orig);
                 return;
             }
 
