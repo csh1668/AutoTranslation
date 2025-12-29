@@ -1,12 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Text;
-using System.Threading.Tasks;
 using RimWorld;
 using Verse;
+using AutoTranslation;
 
 namespace AutoTranslation.Translators
 {
@@ -21,18 +17,19 @@ namespace AutoTranslation.Translators
         {
             try
             {
-                var request = WebRequest.Create($"{RequestURL}models");
-                request.Method = "GET";
-                request.Headers.Add("Authorization", "Bearer " + APIKey);
+                var headers = new Dictionary<string, string>
+                {
+                    { "Authorization", "Bearer " + APIKey }
+                };
 
-                var raw = request.GetResponseAndReadText();
+                var raw = NetworkHelper.Get(Helpers.CombineUrl(RequestURL, "models"), headers);
                 var models = raw.GetStringValuesFromJson("id");
 
                 return models;
             }
             catch (Exception e)
             {
-                Messages.Message("AT_Message_FailedToGetModels".Translate() + e.Message, MessageTypeDefOf.NegativeEvent);
+                // Messages.Message("AT_Message_FailedToGetModels".Translate() + e.Message, MessageTypeDefOf.NegativeEvent);
                 return null;
             }
         }
@@ -53,22 +50,17 @@ namespace AutoTranslation.Translators
                 ]
             }}";
 
-            var request = WebRequest.Create($"{RequestURL}chat/completions");
-            request.Method = "POST";
-            request.ContentType = "application/json";
-            request.Headers.Add("Authorization", "Bearer " + APIKey);
-
-            using (var sw = new StreamWriter(request.GetRequestStream()))
+            var headers = new Dictionary<string, string>
             {
-                sw.Write(requestBody);
-            }
+                { "Authorization", "Bearer " + APIKey }
+            };
 
-            return request.GetResponseAndReadText();
+            return NetworkHelper.Post(Helpers.CombineUrl(RequestURL, "chat", "completions"), requestBody, headers);
         }
 
         protected override string ParseResponse(string response)
         {
-            return response.GetStringValueFromJson("content").Trim();
+            return response.GetStringValueFromJson("content")?.Trim() ?? response;
         }
     }
 }

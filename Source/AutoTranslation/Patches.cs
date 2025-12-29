@@ -23,16 +23,16 @@ namespace AutoTranslation
             if (_defInjectedMissingloaded) return;
 
             AutoTranslation.sw.Start();
+            PerformanceMonitor.StartDefInjectionMonitoring();
             Log.Message(AutoTranslation.LogPrefix + "finding untranslated DefInjected...");
 
-            // TODO: DELETE THIS
-            SpaghettiCodes.SpanishPsychology();
-
+            CompatibilityPatches.ApplyPatches();
 
             _defInjectedMissingloaded = true;
             InjectionManager.InjectMissingDefInjection();
 
             Log.Message(AutoTranslation.LogPrefix + "finding untranslated DefInjected done!");
+            PerformanceMonitor.StopDefInjectionMonitoring();
 
             AutoTranslation.sw.Stop();
         }

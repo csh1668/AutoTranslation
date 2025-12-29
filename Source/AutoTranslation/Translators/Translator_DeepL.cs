@@ -1,21 +1,15 @@
-﻿using RimWorld;
-using System;
+﻿using System.Text.RegularExpressions;
+using Verse;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
-using UnityEngine.Diagnostics;
-using UnityEngine.Networking;
-using Verse;
+using System;
+using AutoTranslation;
 
 namespace AutoTranslation.Translators
 {
     public class Translator_DeepL : Translator_BaseTraditional
     {
-        private static readonly StringBuilder sb = new StringBuilder(1024);
+        private static readonly System.Text.StringBuilder sb = new System.Text.StringBuilder(1024);
         private string _cachedTranslateLanguage;
         protected virtual string url => $"https://api-free.deepl.com/v2/translate";
 
@@ -23,9 +17,20 @@ namespace AutoTranslation.Translators
         public override bool RequiresKey => true;
         public override string TranslateLanguage => _cachedTranslateLanguage ?? (_cachedTranslateLanguage = GetTranslateLanguage());
 
+        public TranslatorSettings_DeepL Config
+        {
+            get
+            {
+                if (Settings == null) Settings = new TranslatorSettings_DeepL();
+                return Settings as TranslatorSettings_DeepL;
+            }
+        }
+
         public override void Prepare()
         {
-            if (string.IsNullOrEmpty(Settings.APIKey))
+            if (Settings == null) Settings = new TranslatorSettings_DeepL();
+
+            if (string.IsNullOrEmpty(Config.APIKey))
                 return;
             Ready = true;
         }
@@ -44,17 +49,38 @@ namespace AutoTranslation.Translators
             }
             try
             {
-                translated = Parse(GetResponseUnsafe(url, APIKey, $@"
+                // Use unified placeholder protection system
+                var (protectedText, placeholders) = text.ProtectPlaceholders();
+                
+                var body = $@"
                     {{
-
-                        ""text"": [""{EscapePlaceholders(text)}""],
+                        ""text"": [""{protectedText.EscapeJsonString()}""],
                         ""target_lang"": ""{TranslateLanguage}"",
-                        ""preserve_formatting"": true,
-                        ""tag_handling"": ""xml"",
-                        ""ignore_tags"": [""x""]
+                        ""preserve_formatting"": true
                     }}
-                ", skipRetry), out var detectedLang);
-                translated = detectedLang == TranslateLanguage ? text : UnEscapePlaceholders(translated);
+                ";
+
+                var headers = new Dictionary<string, string>
+                {
+                    { "Authorization", $"DeepL-Auth-Key {Config.APIKey}" }
+                };
+
+                // Use NetworkHelper with retry logic
+                var response = NetworkHelper.Post(url, body, headers, "application/json", skipRetry ? 0 : 3);
+                
+                var translatedProtected = Parse(response, out var detectedLang);
+                
+                // Restore placeholders
+                var (restoredText, allRestored) = translatedProtected.RestorePlaceholders(placeholders);
+                
+                translated = detectedLang == TranslateLanguage ? text : restoredText;
+                
+                if (!allRestored)
+                {
+                    Log.Warning(AutoTranslation.LogPrefix + $"{Name}: Some placeholders were not properly restored. Using original text.");
+                    translated = text;
+                    return false;
+                }
 
                 return true;
             }
@@ -80,97 +106,7 @@ namespace AutoTranslation.Translators
             return _languageMap.ContainsKey(lang);
         }
 
-        protected string APIKey =>
-            rotater == null ? (rotater = new APIKeyRotater(Settings.APIKey.Split(','))).Key : rotater.Key;
-
         protected APIKeyRotater rotater = null;
-
-        public static string GetResponseUnsafe(string url, string apiKey, string body, bool skipRetry = false)
-        {
-            const int maxRetries = 5;
-            const int initialDelayMs = 1000; // 1 second
-            const int maxDelayMs = 60000; // 60 seconds
-
-            var rand = new Random();
-            var retryCount = 0;
-
-            while (true)
-            {
-                var request = new UnityWebRequest(url, "POST");
-                byte[] bodyRaw = Encoding.UTF8.GetBytes(body);
-                request.uploadHandler = new UploadHandlerRaw(bodyRaw);
-                request.downloadHandler = new DownloadHandlerBuffer();
-
-                request.SetRequestHeader("Content-Type", "application/json");
-                request.SetRequestHeader("Authorization", $"DeepL-Auth-Key {apiKey}");
-
-                try
-                {
-                    var asyncOperation = request.SendWebRequest();
-                    while (!asyncOperation.isDone)
-                    {
-                        Thread.Sleep(1);
-                    }
-
-                    // Check for HTTP 429 specifically
-                    if (request.responseCode == 429)
-                    {
-                        // If skipRetry is true, don't attempt to retry
-                        if (skipRetry)
-                        {
-                            Log.Warning(AutoTranslation.LogPrefix + "DeepL API rate limit exceeded (HTTP 429). Skip retry flag is set, failing immediately.");
-                            throw new Exception($"Web error: Rate limit exceeded (HTTP 429) - retry skipped");
-                        }
-                        
-                        // Too many requests - handle with exponential backoff
-                        if (retryCount >= maxRetries)
-                        {
-                            Log.Error(AutoTranslation.LogPrefix + $"DeepL API rate limit exceeded. Maximum retries ({maxRetries}) reached.");
-                            throw new Exception($"Web error: Rate limit exceeded (HTTP 429) - maximum retries reached");
-                        }
-
-                        retryCount++;
-
-                        // Calculate delay with exponential backoff and jitter
-                        int delayMs = (int)Math.Min(maxDelayMs, initialDelayMs * Math.Pow(2, retryCount - 1));
-                        // Add jitter (±20% randomness) to avoid thundering herd problem
-                        delayMs = (int)(delayMs * (0.8 + 0.4 * rand.NextDouble()));
-
-                        Log.Warning(AutoTranslation.LogPrefix + $"DeepL API rate limit exceeded (HTTP 429). Retrying in {delayMs / 1000.0:F1} seconds (attempt {retryCount}/{maxRetries})");
-
-                        // Dispose of the current request before sleeping
-                        request.Dispose();
-
-                        Thread.Sleep(delayMs);
-                        continue; // Retry the request
-                    }
-                    else if (request.isNetworkError || request.isHttpError)
-                    {
-                        throw new Exception($"Web error: {request.error}");
-                    }
-
-                    // Success - return the response
-                    return request.downloadHandler.text;
-                }
-                catch (Exception ex)
-                {
-                    // For other exceptions that aren't HTTP 429, propagate them up
-                    if (request.responseCode != 429)
-                    {
-                        throw;
-                    }
-
-                    // If the exception was already handled in the HTTP 429 block, 
-                    // we shouldn't reach here, but just in case
-                    throw new Exception($"Error during DeepL API request: {ex.Message}", ex);
-                }
-                finally
-                {
-                    // Ensure request is properly disposed
-                    request.Dispose();
-                }
-            }
-        }
 
         public static string Parse(string text, out string detectedLang)
         {
@@ -234,5 +170,16 @@ namespace AutoTranslation.Translators
             ["Ukrainian"] = "UK",
             ["English"] = "EN"
         };
+        
+        public override void DrawSettings(Listing_Standard ls)
+        {
+            if (Settings == null) Settings = new TranslatorSettings_DeepL();
+            
+            var apiKeyLabelRect = ls.GetRect(Text.LineHeight);
+            Widgets.Label(apiKeyLabelRect, "AT_Setting_APIKey".Translate());
+            TooltipHandler.TipRegion(apiKeyLabelRect, "AT_Setting_RequiresAPIKey_Tooltip".Translate());
+            
+            Config.APIKey = ls.TextEntry(Config.APIKey);
+        }
     }
 }

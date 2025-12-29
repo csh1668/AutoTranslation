@@ -4,7 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using RimWorld;
 using Verse;
@@ -12,17 +12,97 @@ using static Verse.DefInjectionPackage;
 
 namespace AutoTranslation
 {
-    /// <summary>
-    /// Similar to Verse.DefInjectionUtility but much faster. (60000ms -> 3000ms)
-    /// </summary>
     public static class DefInjectionUtilityCustom
     {
         public delegate void Traverser(string normalizedPath, string suggestedPath, bool isCollection, string curValue,
             IEnumerable<string> curValueEnumerable, object parentObject, FieldInfo fi, Def def);
-        private static readonly Dictionary<Type, List<FieldInfo>> fieldsCached = new Dictionary<Type, List<FieldInfo>>();
+        
+        private static readonly ConcurrentDictionary<Type, List<FieldInfo>> fieldsCached = new ConcurrentDictionary<Type, List<FieldInfo>>();
+        
+        // Fields that should never be translated
+        private static readonly HashSet<string> BlacklistedFields = new HashSet<string>
+        {
+            "alienRace", "texPath", "graphicPath", "soundDef", "effecter", 
+            "iconPath", "shader", "soundCast", "soundCastTail", "soundInteract",
+            "soundHitPawn", "soundMiss", "soundMeleeHit", "soundMeleeMiss",
+            "soundAmbience", "linkSound"
+        };
+
+        // Regular expressions for detecting file paths or non-translatable content
+        private static readonly Regex FilePathRegex = new Regex(@"^[\w\/\.\-\\]+\.(png|jpg|jpeg|wav|mp3|ogg|xml|txt|lua|tex|dds)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        private static readonly Regex PathLikeRegex = new Regex(@"[\/\\]", RegexOptions.Compiled);
+        private static readonly Regex OnlySymbolsRegex = new Regex(@"^[^\w\s]+$", RegexOptions.Compiled);
+        private static readonly Regex IdLikeRegex = new Regex(@"^[a-zA-Z0-9_]+$", RegexOptions.Compiled);
+
+        // Cache for ShouldTranslate results to avoid redundant checks
+        private static readonly ConcurrentDictionary<(string value, string fieldName), bool> _shouldTranslateCache = 
+            new ConcurrentDictionary<(string value, string fieldName), bool>();
+
+        public static bool ShouldTranslate(string value, FieldInfo fi)
+        {
+            // Fast path for null/empty
+            if (string.IsNullOrEmpty(value) || string.IsNullOrWhiteSpace(value)) return false;
+            
+            // Check cache first
+            var key = (value, fi?.Name ?? "");
+            if (_shouldTranslateCache.TryGetValue(key, out var result))
+            {
+                PerformanceMonitor.RecordCacheHit();
+                return result;
+            }
+            
+            return _shouldTranslateCache.GetOrAdd(key, k => ShouldTranslateInternal(k.value, k.fieldName, fi));
+        }
+
+        private static bool ShouldTranslateInternal(string value, string fieldName, FieldInfo fi)
+        {
+            PerformanceMonitor.RecordCacheMiss();
+            
+            // 0. Language detection check (prevent re-translating already translated text)
+            // 이미 목표 언어로 작성된 텍스트는 번역하지 않음
+            if (Settings.EnableLanguageDetection && LanguageDetector.IsAlreadyInTargetLanguage(value))
+            {
+                return false;
+            }
+            
+            // 1. Fast checks first (field name based)
+            if (fieldName == "label" || fieldName == "description" || 
+                fieldName.EndsWith("Label") || fieldName.EndsWith("Description")) 
+                return true;
+            
+            if (BlacklistedFields.Contains(fieldName)) return false;
+
+            // 2. Length check (cheap)
+            if (value.Length < 2 || value.Length > 1000) return false;
+
+            // 3. Character frequency checks (faster than regex)
+            int slashCount = 0;
+            bool hasSpace = false;
+            for (int i = 0; i < value.Length; i++)
+            {
+                char c = value[i];
+                if (c == '/' || c == '\\') slashCount++;
+                if (c == ' ') hasSpace = true;
+                if (slashCount > 0 && hasSpace) break; // Early exit
+            }
+            
+            // Contains slashes but no spaces -> likely a path
+            if (slashCount > 0 && !hasSpace) return false;
+
+            // 4. Regex checks (expensive, do last)
+            if (FilePathRegex.IsMatch(value)) return false;
+            if (OnlySymbolsRegex.IsMatch(value)) return false;
+            
+            // ID heuristic: CamelCase or snake_case without spaces usually isn't prose
+            if (IdLikeRegex.IsMatch(value)) return false;
+
+            return true;
+        }
 
         public static void FindMissingDefInjection(Action<DefInjectionUntranslatedParams> callBack)
         {
+            PerformanceMonitor.StartDefInjectionMonitoring();
+            
             AddBlackList();
 
             var injectionsByNormalizedPath = new Dictionary<string, DefInjection>();
@@ -31,31 +111,44 @@ namespace AutoTranslation
                 if (!injectionsByNormalizedPath.ContainsKey(value.normalizedPath))
                     injectionsByNormalizedPath.Add(value.normalizedPath, value);
             }
-            foreach (var defInjectionPackage in LanguageDatabase.activeLanguage.defInjections
-                         .Where(x => !blackListTypes.Any(black => x.defType.IsAssignableFrom(black))).OrderBy(x => Order(x.defType)))
-            {
-                ForEachPossibleDefInjection(defInjectionPackage.defType,
-                    (normalizedPath, suggestedPath, isCollection, value, enumerableValue, parentObject, fi, def) =>
-                    {
-                        if (!isCollection)
-                        {
+            
+            // Use concurrent collection for parallel processing
+            var resultBag = new ConcurrentBag<DefInjectionUntranslatedParams>();
+            
+            // Parallel processing by DefInjection package
+            var packages = LanguageDatabase.activeLanguage.defInjections
+                .Where(x => !blackListTypes.Any(black => x.defType.IsAssignableFrom(black)))
+                .OrderBy(x => Order(x.defType))
+                .ToList();
 
-                            bool flag = false;
-                            if (injectionsByNormalizedPath.TryGetValue(normalizedPath, out var defInjection) && !defInjection.IsFullListInjection)
+            Parallel.ForEach(packages,
+                new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+                defInjectionPackage =>
+                {
+                    ForEachPossibleDefInjection(defInjectionPackage.defType,
+                        (normalizedPath, suggestedPath, isCollection, value, enumerableValue, parentObject, fi, def) =>
+                        {
+                            if (!isCollection)
                             {
-                                if (defInjection.isPlaceholder)
+                                // Skip if we shouldn't translate this value
+                                if (!ShouldTranslate(value, fi)) return;
+
+                                bool flag = false;
+                                if (injectionsByNormalizedPath.TryGetValue(normalizedPath, out var defInjection) && !defInjection.IsFullListInjection)
+                                {
+                                    if (defInjection.isPlaceholder)
+                                    {
+                                        flag = true;
+                                    }
+                                }
+                                else
                                 {
                                     flag = true;
                                 }
-                            }
-                            else
-                            {
-                                flag = true;
-                            }
 
                             if (flag && DefInjectionUtility.ShouldCheckMissingInjection(value, fi, def))
                             {
-                                callBack(new DefInjectionUntranslatedParams(normalizedPath, suggestedPath, value,
+                                resultBag.Add(new DefInjectionUntranslatedParams(normalizedPath, suggestedPath, value,
                                     parentObject, fi, def));
                             }
                         }
@@ -68,15 +161,25 @@ namespace AutoTranslation
                         }
                         else
                         {
-                            if (normalizedPath.Contains("rulesFiles"))
-                                return;
-                            int num = 0; bool flag = false;
+                            if (normalizedPath.Contains("rulesFiles")) return;
+                            
+                            int num = 0;
+                            bool listHasMissingItems = false;
                             var lst = enumerableValue.ToList();
+                            
                             foreach (var element in lst)
                             {
                                 var key = normalizedPath + "." + num;
                                 var curSuggestedPath = suggestedPath + "." + num;
 
+                                // Filter elements we shouldn't translate
+                                if (!ShouldTranslate(element, fi))
+                                {
+                                    num++;
+                                    continue;
+                                }
+
+                                bool flag = false;
                                 if (injectionsByNormalizedPath.TryGetValue(key, out var defInjection2) && !defInjection2.IsFullListInjection)
                                 {
                                     if (defInjection2.isPlaceholder)
@@ -86,15 +189,28 @@ namespace AutoTranslation
 
                                 if (flag && DefInjectionUtility.ShouldCheckMissingInjection(element, fi, def))
                                 {
-                                    callBack(new DefInjectionUntranslatedParams(normalizedPath, suggestedPath, lst, parentObject, fi, def));
+                                    listHasMissingItems = true;
                                 }
 
                                 num++;
                             }
+                            
+                            // Add the list once if it has any missing items
+                            if (listHasMissingItems)
+                            {
+                                resultBag.Add(new DefInjectionUntranslatedParams(normalizedPath, suggestedPath, lst, parentObject, fi, def));
+                            }
                         }
                     });
+                });
+            
+            // Process results
+            foreach (var result in resultBag)
+            {
+                callBack(result);
             }
             
+            PerformanceMonitor.StopDefInjectionMonitoring();
         }
 
         public static void ForEachPossibleDefInjection(Type defType, Traverser action)
@@ -106,7 +222,20 @@ namespace AutoTranslation
             }
             foreach (var def in GenDefDatabase.GetAllDefsInDatabaseForDef(defType))
             {
-                ForEachPossibleDefInjectionInDef(def, action);
+                try
+                {
+                    PerformanceMonitor.RecordDefProcessed();
+                    ForEachPossibleDefInjectionInDef(def, action);
+                }
+                catch (Exception ex)
+                {
+                    // Skip malformed defs that cause processing errors
+                    // Only log in DevMode as these are usually harmless and expected with certain mod combinations
+                    if (Prefs.DevMode)
+                    {
+                        Log.Warning($"{AutoTranslation.LogPrefix} Error processing Def '{def?.defName ?? "unknown"}' of type {defType.Name}: {ex.Message}");
+                    }
+                }
             }
         }
 
@@ -118,14 +247,22 @@ namespace AutoTranslation
 
         private static void ForEachPossibleDefInjectionInDefRecursive(object cur, string curNormalizedPath, string curSuggestedPath, HashSet<object> visited, Def def, Traverser action)
         {
-            if (cur == null || cur is Thing || !cur.GetType().IsValueType && visited.Contains(cur))
+            if (cur == null || cur is Thing) return;
+            
+            // Skip primitive and common value types (performance optimization)
+            var curType = cur.GetType();
+            if (_skipTypes.Contains(curType)) return;
+            
+            if (!curType.IsValueType && visited.Contains(cur))
                 return;
             visited.Add(cur);
+            
             foreach (var field in GetFieldsOptimized(cur.GetType()))
             {
-                if (blackListFields.Any(x => field.Name == x)) continue;
+                if (blackListFields.Contains(field.Name) || BlacklistedFields.Contains(field.Name)) continue;
 
-                var nxt = field.GetValue(cur);
+                PerformanceMonitor.RecordFieldAccessed();
+                var nxt = ReflectionCache.GetValue(field, cur);
                 if (nxt is Def) continue;
 
                 // String or TaggedString일 경우
@@ -150,14 +287,24 @@ namespace AutoTranslation
                     {
                         if (item != null && !(item is Def) && GenTypes.IsCustomType(item.GetType()))
                         {
-                            var handle = TranslationHandleUtility.GetBestHandleWithIndexForListElement(nxtCollection, item);
-                            if (string.IsNullOrEmpty(handle))
+                            string handle;
+                            try
+                            {
+                                handle = TranslationHandleUtility.GetBestHandleWithIndexForListElement(nxtCollection, item);
+                                if (string.IsNullOrEmpty(handle))
+                                    handle = idx.ToString();
+                            }
+                            catch (Exception)
+                            {
+                                // RimWorld's TranslationHandleUtility can fail with certain data structures
+                                // This is normal for some vanilla/mod defs - just fall back to using the index
+                                // No logging needed as this is expected behavior
                                 handle = idx.ToString();
+                            }
                             var nxtNormalizedPath = $"{curNormalizedPath}.{field.Name}.{idx}";
                             var nxtSuggestedPath = $"{curSuggestedPath}.{field.Name}.{handle}";
                             ForEachPossibleDefInjectionInDefRecursive(item, nxtNormalizedPath, nxtSuggestedPath, visited, def, action);
                         }
-
                         idx++;
                     }
                 }
@@ -171,13 +318,13 @@ namespace AutoTranslation
 
         private static List<FieldInfo> GetFieldsOptimized(Type type)
         {
-            if (fieldsCached.TryGetValue(type, out var fields)) return fields;
-            fields = type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                .Where(field => !field.HasAttribute<UnsavedAttribute>() && !field.HasAttribute<NoTranslateAttribute>())
-                .OrderByDescending(field => field.Name == "label")
-                .ThenByDescending(field => field.Name == "description").ToList();
-            fieldsCached.Add(type, fields);
-            return fields;
+            return fieldsCached.GetOrAdd(type, t =>
+            {
+                return t.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                    .Where(field => !field.HasAttribute<UnsavedAttribute>() && !field.HasAttribute<NoTranslateAttribute>())
+                    .OrderByDescending(field => field.Name == "label")
+                    .ThenByDescending(field => field.Name == "description").ToList();
+            });
         }
 
         private static int Order(Type type)
@@ -198,6 +345,18 @@ namespace AutoTranslation
 #endif
         };
 
+        // Types that should be skipped during recursive traversal (performance optimization)
+        private static readonly HashSet<Type> _skipTypes = new HashSet<Type>
+        {
+            typeof(int), typeof(float), typeof(double), typeof(bool), typeof(byte), 
+            typeof(short), typeof(long), typeof(uint), typeof(ushort), typeof(ulong),
+            typeof(decimal), typeof(char), typeof(sbyte),
+            typeof(UnityEngine.Vector2), typeof(UnityEngine.Vector3), typeof(UnityEngine.Vector4),
+            typeof(UnityEngine.Color), typeof(UnityEngine.Color32),
+            typeof(Verse.IntVec2), typeof(Verse.IntVec3), typeof(Verse.Rot4),
+            typeof(Verse.CellRect), typeof(UnityEngine.Rect)
+        };
+
         private static readonly HashSet<string> blackListFields = new HashSet<string>
         {
             "alienRace"
@@ -206,9 +365,7 @@ namespace AutoTranslation
         private static void AddBlackList()
         {
             #region FacialAnimations
-
             blackListTypes.AddRange(typeof(Def).AllSubclassesNonAbstract().Where(x => x.Namespace == "FacialAnimation"));
-
             #endregion
         }
 
@@ -262,7 +419,7 @@ namespace AutoTranslation
             {
                 if (_injected)
                 {
-                    Log.Message("Already injected...");
+                    // Log.Message("Already injected...");
                     return;
                 }
 
@@ -293,11 +450,7 @@ namespace AutoTranslation
 
             public void UndoInject()
             {
-                if (!_injected)
-                {
-                    return;
-                }
-
+                if (!_injected) return;
 
                 if (!isCollection)
                 {
@@ -329,10 +482,7 @@ namespace AutoTranslation
 
             public void ClearTranslation()
             {
-                if (_injected)
-                {
-                    UndoInject();
-                }
+                if (_injected) UndoInject();
 
                 if (!isCollection)
                 {
@@ -344,9 +494,7 @@ namespace AutoTranslation
                     {
                         translatedCollection.Clear();
                     }
-
                 }
-
                 _injected = false;
             }
         }

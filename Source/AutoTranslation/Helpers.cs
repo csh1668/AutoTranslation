@@ -70,18 +70,6 @@ namespace AutoTranslation
             return matches.Cast<Match>().Select(match => match.Groups[1].Value.Replace("\\\"", "\"")).ToList();
         }
 
-        public static string GetResponseAndReadText(this WebRequest request)
-        {
-            string raw;
-            using (var resp = request.GetResponse())
-            using (var stream = resp.GetResponseStream())
-            using (var reader = new StreamReader(stream))
-            {
-                raw = reader.ReadToEnd();
-            }
-            return raw;
-        }
-
         #region XmlHelpers
 
         public static XmlElement Append(this XmlElement parent, Action<XmlElement> work)
@@ -140,6 +128,40 @@ namespace AutoTranslation
 
         #endregion
 
+        /// <summary>
+        /// Safely combines URL segments, ensuring proper forward slashes.
+        /// </summary>
+        public static string CombineUrl(params string[] segments)
+        {
+            if (segments == null || segments.Length == 0)
+                return string.Empty;
+            
+            var sb = new StringBuilder();
+            for (int i = 0; i < segments.Length; i++)
+            {
+                var segment = segments[i];
+                if (string.IsNullOrEmpty(segment))
+                    continue;
+                
+                // First segment: keep as-is (may contain protocol like https://)
+                if (i == 0)
+                {
+                    sb.Append(segment.TrimEnd('/'));
+                }
+                else
+                {
+                    // Add separator if needed
+                    if (sb.Length > 0 && sb[sb.Length - 1] != '/')
+                        sb.Append('/');
+                    
+                    // Trim leading and trailing slashes from middle segments
+                    sb.Append(segment.Trim('/'));
+                }
+            }
+            
+            return sb.ToString();
+        }
+
         public static string EscapeJsonString(this string input)
         {
             var sb = new StringBuilder(input.Length);
@@ -160,6 +182,95 @@ namespace AutoTranslation
                 }
             }
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// Protects placeholders and special tags from being modified by AI translation.
+        /// Replaces {0}, {PlayerName}, [itemLabel], <color=#fff>, etc. with safe tokens like __PH0__, __PH1__, etc.
+        /// </summary>
+        public static (string protectedText, Dictionary<string, string> placeholders) ProtectPlaceholders(this string text)
+        {
+            if (string.IsNullOrEmpty(text)) return (text, new Dictionary<string, string>());
+
+            var placeholders = new Dictionary<string, string>();
+            var counter = 0;
+            var result = text;
+
+            // Pattern to match: {anything}, [anything], <tag attributes>, or \n, \t escape sequences
+            // Order matters: longer patterns first to avoid partial matches
+            var patterns = new[]
+            {
+                @"<[^>]+>",           // HTML/XML tags: <color=#fff>, <b>, </color>, etc.
+                @"\{[^\}]+\}",        // Curly braces: {0}, {PlayerName}, etc.
+                @"\[[^\]]+\]",        // Square brackets: [itemLabel], etc.
+                @"\\[nrt]"            // Escape sequences: \n, \r, \t
+            };
+
+            foreach (var pattern in patterns)
+            {
+                result = Regex.Replace(result, pattern, match =>
+                {
+                    var token = $"__PH{counter}__";
+                    placeholders[token] = match.Value;
+                    counter++;
+                    return token;
+                });
+            }
+
+            return (result, placeholders);
+        }
+
+        /// <summary>
+        /// Restores placeholders that were protected by ProtectPlaceholders.
+        /// Returns the restored text and a boolean indicating if all placeholders were found.
+        /// </summary>
+        public static (string restoredText, bool allRestored) RestorePlaceholders(this string translatedText, Dictionary<string, string> placeholders)
+        {
+            if (string.IsNullOrEmpty(translatedText) || placeholders == null || placeholders.Count == 0)
+                return (translatedText, true);
+
+            var result = translatedText;
+            var allFound = true;
+
+            foreach (var kvp in placeholders)
+            {
+                if (result.Contains(kvp.Key))
+                {
+                    result = result.Replace(kvp.Key, kvp.Value);
+                }
+                else
+                {
+                    // Token not found in translated text - AI might have removed it
+                    allFound = false;
+                }
+            }
+
+            // Check if any tokens are still remaining (shouldn't happen if everything worked)
+            if (result.Contains("__PH") && Regex.IsMatch(result, @"__PH\d+__"))
+            {
+                allFound = false;
+            }
+
+            return (result, allFound);
+        }
+
+        /// <summary>
+        /// Validates that the translated text has the same placeholder count as the original.
+        /// </summary>
+        public static bool ValidatePlaceholderCount(this string original, string translated)
+        {
+            var originalCurly = Regex.Matches(original, @"\{[^\}]*\}").Count;
+            var translatedCurly = Regex.Matches(translated, @"\{[^\}]*\}").Count;
+            
+            var originalSquare = Regex.Matches(original, @"\[[^\]]*\]").Count;
+            var translatedSquare = Regex.Matches(translated, @"\[[^\]]*\]").Count;
+            
+            var originalTags = Regex.Matches(original, @"<[^>]+>").Count;
+            var translatedTags = Regex.Matches(translated, @"<[^>]+>").Count;
+
+            return originalCurly == translatedCurly && 
+                   originalSquare == translatedSquare && 
+                   originalTags == translatedTags;
         }
     }
 }

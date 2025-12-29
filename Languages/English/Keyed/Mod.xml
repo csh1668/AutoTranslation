@@ -2,48 +2,79 @@
 <LanguageData>
     <AT_Name>Auto Translation</AT_Name>
 
-    <AT_Setting_ShowOriginal>Hover to show some original text (default: X):</AT_Setting_ShowOriginal>
-    <AT_Setting_ShowOriginal_Tooltip>Hovering the mouse over a translation will display the original text. However, due to limitations of the system, not all translations are supported.</AT_Setting_ShowOriginal_Tooltip>
+    <AT_Setting_ShowOriginal>Show original text on hover (default: Off):</AT_Setting_ShowOriginal>
+    <AT_Setting_ShowOriginal_Tooltip>When hovering over translated text, the original text will be displayed. Due to system limitations, this feature is not available for all translations.</AT_Setting_ShowOriginal_Tooltip>
+    
+    <AT_Setting_EnableLanguageDetection>Enable language detection (default: On):</AT_Setting_EnableLanguageDetection>
+    <AT_Setting_EnableLanguageDetection_Tooltip>Automatically detects if text is already in the target language and skips translation. This prevents re-translating content that's already in Korean/Japanese/Chinese etc. when stored in the English folder. Recommended to keep enabled.</AT_Setting_EnableLanguageDetection_Tooltip>
 
-    <AT_Setting>::Translation settings::</AT_Setting>
-    <AT_Setting_Note>Note: The settings below require a restart</AT_Setting_Note>
-    <AT_Setting_SelectEngine>Select a translation engine (default: Google):</AT_Setting_SelectEngine>
-    <AT_Setting_RequiresAPIKey>Using this translation engine requires an API Key.</AT_Setting_RequiresAPIKey>
-    <AT_Setting_RequiresAPIKey_Tooltip>To use multiple API keys in rotation, enter them separated by ',' characters.</AT_Setting_RequiresAPIKey_Tooltip>
-    <AT_Setting_Test>Add '::TEST::' to translations (for testing)</AT_Setting_Test>
-    <AT_Setting_TestTranslation>&lt;= Testing translations</AT_Setting_TestTranslation>
-    <AT_Message_LanguageNotSupported>This translator does not support your language! Please use another one.</AT_Message_LanguageNotSupported>
+    <AT_Setting>::Translation Settings::</AT_Setting>
+    <AT_Setting_Note>Note: Changes to the settings below require a game restart</AT_Setting_Note>
+    <AT_Setting_SelectEngine>Select translation engine (default: Google):</AT_Setting_SelectEngine>
+    <AT_Setting_RequiresAPIKey>This translation engine requires an API key.</AT_Setting_RequiresAPIKey>
+    <AT_Setting_RequiresAPIKey_Tooltip>To use multiple API keys in rotation, separate them with commas (,).</AT_Setting_RequiresAPIKey_Tooltip>
+    <AT_Setting_Test>Add '::TEST::' prefix to translations (for testing)</AT_Setting_Test>
+    <AT_Setting_TestTranslation>&lt;= Test translation</AT_Setting_TestTranslation>
+    <AT_Message_LanguageNotSupported>This translator does not support your current language. Please select a different one.</AT_Message_LanguageNotSupported>
     <AT_Setting_SelectModel>Selected model: </AT_Setting_SelectModel>
-    <AT_Setting_SelectModelNone>NONE (Please select the model)</AT_Setting_SelectModelNone>
-    <AT_Setting_NoModelFound>No model found! Please check your api key.</AT_Setting_NoModelFound>
+    <AT_Setting_SelectModelNone>NONE (Please select a model)</AT_Setting_SelectModelNone>
+    <AT_Setting_NoModelFound>No models found. Please verify your API key.</AT_Setting_NoModelFound>
+    <AT_Message_NoModelsFound>No models found. Please check your API key and base URL.</AT_Message_NoModelsFound>
+    <AT_Setting_APIKey>API Key:</AT_Setting_APIKey>
+    <AT_Setting_Model>Model:</AT_Setting_Model>
+    <AT_ChooseModel>Choose Model</AT_ChooseModel>
     <AT_Setting_CustomPrompt>Custom system prompt: </AT_Setting_CustomPrompt>
     <AT_Setting_BaseURL>Base URL: </AT_Setting_BaseURL>
     <AT_Setting_CustomBaseURL>Custom base URL: </AT_Setting_CustomBaseURL>
+    <AT_Setting_Reset>Reset to Defaults</AT_Setting_Reset>
+    <AT_Setting_NoTranslatorError>Translator not found. Please check settings.</AT_Setting_NoTranslatorError>
 
-    <AT_Setting_Misc>::Misc::</AT_Setting_Misc>
-    <AT_Setting_ResetDefCache>Reset all Def cache data (If some defs are not translated)</AT_Setting_ResetDefCache>
+    <AT_Setting_Misc>::Miscellaneous::</AT_Setting_Misc>
+    <AT_Setting_ResetDefCache>Reset all Def caches (if some items are not translated)</AT_Setting_ResetDefCache>
 
-    <AT_Status1>The translation is still in progress. However, you can play the game as usual.</AT_Status1>
-    <AT_Status2>The translation is complete! However, it is recommended to 'Reset all Def cache data' or relaunch for full application.</AT_Status2>
-    <AT_Status3>The translation is complete!</AT_Status3>
+    <AT_Status1>Translation is in progress. You can continue playing normally.</AT_Status1>
+    <AT_Status2>Translation complete! It's recommended to reset Def caches or restart the game for full application.</AT_Status2>
+    <AT_Status3>Translation complete!</AT_Status3>
     <AT_Setting_CurStatus>Current status: </AT_Setting_CurStatus>
     <AT_Setting_Cached>Cached translations: </AT_Setting_Cached>
-    <AT_Setting_NotYet>Not translated yet: </AT_Setting_NotYet>
-    <AT_Setting_OpenDir>Open the folder where the translation caches are stored</AT_Setting_OpenDir>
+    <AT_Setting_NotYet>Remaining translations: </AT_Setting_NotYet>
+    <AT_Setting_OpenDir>Open translation cache folder</AT_Setting_OpenDir>
     <AT_Setting_WhiteList>Select mods to translate (applied in real-time)</AT_Setting_WhiteList>
-    <AT_Setting_ResetTranslationCache>Delete the translation caches</AT_Setting_ResetTranslationCache>
+    <AT_Setting_ResetTranslationCache>Delete translation cache</AT_Setting_ResetTranslationCache>
     <AT_Setting_ToggleAll>Toggle all</AT_Setting_ToggleAll>
 
     <AT_Setting_Retranslate>Retranslate</AT_Setting_Retranslate>
-    <AT_Message_RetranslateFailed>Cannot retranslate while translations are in progress.</AT_Message_RetranslateFailed>
+    <AT_Message_RetranslateFailed>Cannot retranslate while translation is in progress.</AT_Message_RetranslateFailed>
     <AT_Message_RetranslateSuccess>{0} has been queued for retranslation.</AT_Message_RetranslateSuccess>
 
-    <AT_Message_ResetDefCache>Def cache has been initialized!</AT_Message_ResetDefCache>
-    <AT_Message_ResetTranslationCache>The translation caches are deleted, please restart the game to start the translation again.</AT_Message_ResetTranslationCache>
-    <AT_Message_WhiteList_Failed>The translation is still in progress and will not be applied in real-time. You will need to retry after the translation is complete, or restart the game, for the changes to take effect.</AT_Message_WhiteList_Failed>
-    <AT_Message_TestFailed>The test failed, maybe API request limit reached. Or please check your model and API key again.</AT_Message_TestFailed>
-    <AT_Setting_RestartWork>Restart translation with current translator settings</AT_Setting_RestartWork>
-    <AT_Message_RestartWork>Restart the translation operation... (to completely redo it, delete the translation data as well, then restart)</AT_Message_RestartWork>
-    <AT_Message_RestartFailed>The restart failed, please check your model and API key again.</AT_Message_RestartFailed>
-    <AT_Message_FailedToGetModels>Failed to get models, please check your API key: </AT_Message_FailedToGetModels>
+    <AT_Message_ResetDefCache>Def caches have been reset!</AT_Message_ResetDefCache>
+    <AT_Message_ResetTranslationCache>Translation cache deleted. Please restart the game to begin translation again.</AT_Message_ResetTranslationCache>
+    <AT_Message_WhiteList_Failed>Translation is in progress and cannot be applied in real-time. Please retry after translation completes, or restart the game.</AT_Message_WhiteList_Failed>
+    <AT_Message_TestFailed>Test failed. You may have reached the API request limit, or your API key/model may be incorrect.</AT_Message_TestFailed>
+    <AT_Setting_RestartWork>Restart translation with current settings</AT_Setting_RestartWork>
+    <AT_Message_RestartWork>Restarting translation... (To completely redo, delete the cache first, then restart)</AT_Message_RestartWork>
+    <AT_Message_RestartFailed>Restart failed. Please verify your API key and model.</AT_Message_RestartFailed>
+    <AT_Message_FailedToGetModels>Failed to retrieve models. Please check your API key: </AT_Message_FailedToGetModels>
+
+    <!-- Tab Names -->
+    <AT_Tab_General>General</AT_Tab_General>
+    <AT_Tab_Translator>Translator</AT_Tab_Translator>
+    <AT_Tab_TargetMods>Target Mods</AT_Tab_TargetMods>
+    <AT_Tab_TranslationEditor>Translation Editor</AT_Tab_TranslationEditor>
+    <AT_Tab_Advanced>Advanced</AT_Tab_Advanced>
+    
+    <!-- Advanced Settings -->
+    <AT_Setting_MaxConcurrency>Maximum concurrent translations</AT_Setting_MaxConcurrency>
+    <AT_Setting_TranslationEditor>Translation Data Editor</AT_Setting_TranslationEditor>
+    <AT_Setting_Editor_Search>Search...</AT_Setting_Editor_Search>
+    <AT_Setting_Editor_Edit>Edit</AT_Setting_Editor_Edit>
+    <AT_Setting_Editor_Delete>Delete</AT_Setting_Editor_Delete>
+    <AT_Setting_Editor_OriginalText>Original Text</AT_Setting_Editor_OriginalText>
+    <AT_Setting_Editor_TranslatedText>Translated Text</AT_Setting_Editor_TranslatedText>
+    <AT_Setting_Editor_Language>Lang</AT_Setting_Editor_Language>
+    <AT_Setting_Editor_Actions>Actions</AT_Setting_Editor_Actions>
+    <AT_Setting_Editor_Save>Save</AT_Setting_Editor_Save>
+    <AT_Setting_Editor_ExpandAll>Expand All</AT_Setting_Editor_ExpandAll>
+    <AT_Setting_Editor_CollapseAll>Collapse All</AT_Setting_Editor_CollapseAll>
+    <AT_Setting_Editor_Total>Total</AT_Setting_Editor_Total>
 </LanguageData>

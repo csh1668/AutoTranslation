@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -7,13 +7,14 @@ using Verse;
 
 namespace AutoTranslation
 {
-    /// <summary>
-    /// TODO: Temporary fixes
-    /// because I'm so lazy ;)
-    /// </summary>
-    public static class SpaghettiCodes
+    public static class CompatibilityPatches
     {
-        public static void SpanishPsychology()
+        public static void ApplyPatches()
+        {
+            SpanishPsychology();
+        }
+
+        private static void SpanishPsychology()
         {
             if (ModsConfig.IsActive("community.psychology.unofficialupdate") &&
                 LanguageDatabase.activeLanguage?.LegacyFolderName.Contains("Spanish") == true)
@@ -23,3 +24,4 @@ namespace AutoTranslation
         }
     }
 }
+

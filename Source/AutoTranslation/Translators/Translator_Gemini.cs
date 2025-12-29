@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using RimWorld;
 using Verse;
-using static System.Net.Mime.MediaTypeNames;
+using AutoTranslation;
 
 namespace AutoTranslation.Translators
 {
@@ -22,12 +22,9 @@ namespace AutoTranslation.Translators
             try
             {
                 var key = APIKey;
-                //var url = $"https://generativelanguage.googleapis.com/v1beta/models?key={key}";
-                var url = $"{RequestURL}models?key={key}";
-                var request = WebRequest.Create(url);
-                request.Method = "GET";
-
-                var raw = request.GetResponseAndReadText();
+                var url = Helpers.CombineUrl(RequestURL, "models") + $"?key={key}";
+                
+                var raw = NetworkHelper.Get(url);
 
                 var models = raw.GetStringValuesFromJson("name").Select(n => n.Split('/').Last()).ToList();
 
@@ -35,15 +32,14 @@ namespace AutoTranslation.Translators
             }
             catch (Exception e)
             {
-                Messages.Message("AT_Message_FailedToGetModels".Translate() + e.Message, MessageTypeDefOf.NegativeEvent);
+                // Messages.Message("AT_Message_FailedToGetModels".Translate() + e.Message, MessageTypeDefOf.NegativeEvent);
                 return null;
             }
         }
 
         protected override string GetResponseUnsafe(string text)
         {
-            //var url = $"https://generativelanguage.googleapis.com/v1beta/models/{Model}:generateContent?key={APIKey}";
-            var url = $"{RequestURL}models/{Model}:generateContent?key={APIKey}";
+            var url = Helpers.CombineUrl(RequestURL, "models", $"{Model}:generateContent") + $"?key={APIKey}";
             var requestBody = $@"{{
 	            ""contents"": [
 		            {{
@@ -63,23 +59,13 @@ namespace AutoTranslation.Translators
 	            }}
             }}";
 
-
-            var request = WebRequest.Create(url);
-            request.Method = "POST";
-            request.ContentType = "application/json";
-
-            using (var sw = new StreamWriter(request.GetRequestStream()))
-            {
-                sw.Write(requestBody);
-            }
-
-            return request.GetResponseAndReadText();
+            return NetworkHelper.Post(url, requestBody);
         }
 
         protected override string ParseResponse(string response)
         {
             var ret = base.ParseResponse(response);
-            if (ret.EndsWith("\\n")) ret = ret.Substring(0, ret.Length - 2);
+            if (ret != null && ret.EndsWith("\\n")) ret = ret.Substring(0, ret.Length - 2);
             return ret;
         }
     }

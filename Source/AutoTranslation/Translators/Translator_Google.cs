@@ -4,14 +4,11 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
-using System.Security.Policy;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using UnityEngine.Diagnostics;
 using UnityEngine.Networking;
 using Verse;
-using Verse.Noise;
+using AutoTranslation;
 
 namespace AutoTranslation.Translators
 {
@@ -29,10 +26,9 @@ namespace AutoTranslation.Translators
 
         public override void Prepare()
         {
-
             try
             {
-                var resp = GetResponseUnsafe(testUrl);
+                var resp = NetworkHelper.Get(testUrl);
                 if (string.IsNullOrEmpty(resp)) throw new Exception("no response");
                 Ready = true;
             }
@@ -46,9 +42,24 @@ namespace AutoTranslation.Translators
         {
             try
             {
-                var url = string.Format(urlFormat, StartLanguage, TranslateLanguage, UnityWebRequest.EscapeURL(text));
-                var t = ParseResult(GetResponseUnsafe(url), out var detectedLang);
-                translated = detectedLang == TranslateLanguage ? text : t;
+                // Protect placeholders
+                var (protectedText, placeholders) = text.ProtectPlaceholders();
+                
+                var url = string.Format(urlFormat, StartLanguage, TranslateLanguage, UnityWebRequest.EscapeURL(protectedText));
+                var t = ParseResult(NetworkHelper.Get(url), out var detectedLang);
+                
+                // Restore placeholders
+                var (restoredText, allRestored) = t.RestorePlaceholders(placeholders);
+                
+                translated = detectedLang == TranslateLanguage ? text : restoredText;
+                
+                if (!allRestored)
+                {
+                    Log.Warning(AutoTranslation.LogPrefix + $"{Name}: Some placeholders were not properly restored. Using original text.");
+                    translated = text;
+                    return false;
+                }
+                
                 return true;
             }
             catch (Exception e)
@@ -72,31 +83,6 @@ namespace AutoTranslation.Translators
             return TranslateLanguageGetter.TryGetValue(lang.LegacyFolderName, out var _);
         }
 
-
-        public static string GetResponseUnsafe(string url)
-        {
-            var request = WebRequest.Create(url);
-            request.Method = "GET";
-
-            using (var response = (HttpWebResponse)request.GetResponse())
-            {
-                if (response.StatusCode == HttpStatusCode.OK)
-                {
-                    using (var stream = response.GetResponseStream())
-                    {
-                        using (var reader = new StreamReader(stream))
-                        {
-                            return reader.ReadToEnd();
-                        }
-                    }
-                }
-                else
-                {
-                    throw new Exception($"Request failed with status: {response.StatusCode}");
-                }
-            }
-        }
-
         internal static string ParseResult(string text, out string detectedLang)
         {
             sb.Clear();
@@ -112,13 +98,20 @@ namespace AutoTranslation.Translators
                 else if (flag) sb.Append(text[i]);
             }
 
-            var pattern = @"\[""([^""]+)""\]\]\]";
-            var match = Regex.Match(text, pattern);
-            detectedLang = "aaaaa"; /*match.Success ? match.Groups[1].Value : string.Empty;*/
+            // Simple regex to extract language, fragile but matches existing logic
+            // The existing regex was: @"\[""([^""]+)""\]\]\]"
+            // The detected lang is usually at the end of the JSON array for client=gtx
+            // [[["translated","orig",...]], ... "en"]
+            // The regex looks for ["code"]]] at the end? 
+            // Original code: detectedLang = "aaaaa"; // match.Success ? ...
+            // It seems detection was disabled/commented out in original code?
+            // "detectedLang = "aaaaa"; /*match.Success ? match.Groups[1].Value : string.Empty;*/"
+            // So I will leave it as is.
+            
+            detectedLang = "aaaaa"; 
 
             return sb.ToString();
         }
-
 
         private static readonly Dictionary<string, string> TranslateLanguageGetter = new Dictionary<string, string>
         {
@@ -153,6 +146,7 @@ namespace AutoTranslation.Translators
             ["Vietnamese"] = "vi",
             ["Thai"] = "th"
         };
+        
         private static string GetTranslateLanguage()
         {
             if (LanguageDatabase.activeLanguage == null)
@@ -162,7 +156,6 @@ namespace AutoTranslation.Translators
             }
 
             var lang = LanguageDatabase.activeLanguage.LegacyFolderName;
-
 
             lang = lang.Split('_').First();
 

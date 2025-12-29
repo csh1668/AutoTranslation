@@ -106,7 +106,8 @@ namespace AutoTranslation
             {
                 DefInjectionUtilityCustom.FindMissingDefInjection((@params =>
                 {
-                    if (@params.field.Name.ToLower().Contains("path")) return;
+                    // ShouldTranslate is now checked inside FindMissingDefInjection, but for safety:
+                    if (!DefInjectionUtilityCustom.ShouldTranslate(@params.original, @params.field)) return;
 
                     defInjectedMissing.Add(@params);
                     InjectMissingDefInjection(@params);
@@ -143,7 +144,10 @@ namespace AutoTranslation
                     UpdateTranslationCount(@params.def?.modContentPack?.PackageId, true);
                     return;
                 }
-                TranslatorManager.Translate(@params.original, t =>
+                
+                var modId = @params.def?.modContentPack?.PackageId ?? string.Empty;
+                
+                TranslatorManager.Translate(@params.original, string.Empty, modId, t =>
                 {
                     @params.translated = t;
                     @params.InjectTranslation();
@@ -166,12 +170,19 @@ namespace AutoTranslation
                 }
                 foreach (var original in @params.originalCollection)
                 {
+                    // Filter list items again here just in case
+                    if (!DefInjectionUtilityCustom.ShouldTranslate(original, @params.field))
+                    {
+                        @params.translatedCollection.TryAdd(original, original);
+                        continue;
+                    }
+
                     if (original.Contains("->"))
                     {
                         var token = original.Split(new[] { "->" }, StringSplitOptions.None);
                         var key = token[0];
                         var (value, placeHolders) = token[1].ToFormatString();
-                        TranslatorManager.Translate(value, key + placeHolders.ToLineList(), t =>
+                        TranslatorManager.Translate(value, key + placeHolders.ToLineList(), @params.def?.modContentPack?.PackageId ?? string.Empty, t =>
                         {
                             string t2 = string.Empty;
                             try
@@ -199,6 +210,19 @@ namespace AutoTranslation
                             ReverseTranslator[t2] = original;
                         });
                     }
+                    else
+                    {
+                         // Regular list item translation
+                        TranslatorManager.Translate(original, string.Empty, @params.def?.modContentPack?.PackageId ?? string.Empty, t =>
+                        {
+                            @params.translatedCollection.TryAdd(original, t);
+                            @params.InjectTranslation();
+                            UpdateTranslationCount(@params.def?.modContentPack?.PackageId, true);
+                            
+                            if (string.IsNullOrEmpty(t)) return;
+                            ReverseTranslator[t] = original;
+                        });
+                    }
                 }
             }
         }
@@ -218,13 +242,28 @@ namespace AutoTranslation
             foreach (var @param in keyedMissing)
             {
                 if (@param.mod?.PackageId != null && Settings.BlackListModPackageIds.Contains(@param.mod.PackageId)) continue;
-                TranslatorManager.Translate(@param.value.value, @param.key, t =>
+                
+                // Keyed replacement params usually don't have FieldInfo, but they are generally safe text.
+                // However, we should still watch out for path-like strings in keyed data.
+                if (DefInjectionUtilityCustom.ShouldTranslate(@param.value.value, null)) // Pass null for field info? ShouldTranslate handles it.
                 {
-                    ReverseTranslator[t] = @param.value.value;
-                    @param.translation = t;
-                    @param.Inject();
-                    UpdateTranslationCount(@param.mod?.PackageId, false);
-                });
+                    try
+                    {
+                        var modId = @param.mod?.PackageId ?? string.Empty;
+                        
+                        TranslatorManager.Translate(@param.value.value, @param.key, modId, t =>
+                        {
+                            ReverseTranslator[t] = @param.value.value;
+                            @param.translation = t;
+                            @param.Inject();
+                            UpdateTranslationCount(@param.mod?.PackageId, false);
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning(AutoTranslation.LogPrefix + $"Failed to translate keyed '{@param.key}': {ex.Message}");
+                    }
+                }
             }
         }
 
@@ -236,13 +275,24 @@ namespace AutoTranslation
             foreach (var @param in keyedMissing.Where(x => x.mod == targetMod))
             {
                 if (@param.mod?.PackageId != null && Settings.BlackListModPackageIds.Contains(@param.mod.PackageId)) continue;
-                TranslatorManager.Translate(@param.value.value, @param.key, t =>
+                
+                if (DefInjectionUtilityCustom.ShouldTranslate(@param.value.value, null))
                 {
-                    ReverseTranslator[t] = @param.value.value;
-                    @param.translation = t;
-                    @param.Inject();
-                    UpdateTranslationCount(@param.mod?.PackageId, false);
-                });
+                    try
+                    {
+                        TranslatorManager.Translate(@param.value.value, @param.key, @param.mod?.PackageId ?? string.Empty, t =>
+                        {
+                            ReverseTranslator[t] = @param.value.value;
+                            @param.translation = t;
+                            @param.Inject();
+                            UpdateTranslationCount(@param.mod?.PackageId, false);
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning(AutoTranslation.LogPrefix + $"Failed to translate keyed '{@param.key}' for mod {targetMod.Name}: {ex.Message}");
+                    }
+                }
             }
         }
 
@@ -289,6 +339,138 @@ namespace AutoTranslation
             UndoInjectMissingKeyed();
         }
 
+        /// <summary>
+        /// Re-injects a cached translation into the game when edited in the translation editor.
+        /// Finds the corresponding DefInjection or Keyed entry and updates it.
+        /// </summary>
+        public static void ReInjectCachedTranslation(string cacheKey, string newTranslation)
+        {
+            // Try to find in ReverseTranslator to get original text
+            string currentTranslation;
+            TranslatorManager.CachedTranslations.TryGetValue(cacheKey, out currentTranslation);
+            var originalText = ReverseTranslator.FirstOrDefault(x => x.Key == currentTranslation).Value;
+            
+            if (string.IsNullOrEmpty(originalText))
+            {
+                // If not in ReverseTranslator, try to extract from cache key
+                // Format: "modId:normalizedText" or just "normalizedText"
+                var colonIndex = cacheKey.IndexOf(':');
+                if (colonIndex > 0)
+                {
+                    originalText = cacheKey.Substring(colonIndex + 1);
+                }
+                else
+                {
+                    originalText = cacheKey;
+                }
+            }
+            
+            // Try DefInjection first
+            bool foundAndInjected = false;
+            foreach (var defParam in defInjectedMissing)
+            {
+                if (defParam.isCollection)
+                {
+                    // Check if this collection contains the original text
+                    if (defParam.originalCollection.Contains(originalText))
+                    {
+                        // Update the translated collection
+                        defParam.translatedCollection[originalText] = newTranslation;
+                        defParam.InjectTranslation();
+                        foundAndInjected = true;
+                        break;
+                    }
+                }
+                else
+                {
+                    // Check if this is the field with the original text
+                    if (defParam.original == originalText)
+                    {
+                        defParam.translated = newTranslation;
+                        defParam.InjectTranslation();
+                        foundAndInjected = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (foundAndInjected) return;
+            
+            // Try Keyed if not found in DefInjection
+            foreach (var keyedParam in keyedMissing)
+            {
+                if (keyedParam.value.value == originalText)
+                {
+                    keyedParam.translation = newTranslation;
+                    keyedParam.Inject();
+                    break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Removes a cached translation from the game when deleted in the translation editor.
+        /// </summary>
+        public static void RemoveCachedTranslation(string cacheKey)
+        {
+            // Try to find in ReverseTranslator to get original text
+            string currentTranslation;
+            TranslatorManager.CachedTranslations.TryGetValue(cacheKey, out currentTranslation);
+            var originalText = ReverseTranslator.FirstOrDefault(x => x.Key == currentTranslation).Value;
+            
+            if (string.IsNullOrEmpty(originalText))
+            {
+                // If not in ReverseTranslator, try to extract from cache key
+                var colonIndex = cacheKey.IndexOf(':');
+                if (colonIndex > 0)
+                {
+                    originalText = cacheKey.Substring(colonIndex + 1);
+                }
+                else
+                {
+                    originalText = cacheKey;
+                }
+            }
+            
+            // Try DefInjection first - restore original
+            bool foundAndRestored = false;
+            foreach (var defParam in defInjectedMissing)
+            {
+                if (defParam.isCollection)
+                {
+                    if (defParam.originalCollection.Contains(originalText))
+                    {
+                        // Remove from translated collection to restore original
+                        defParam.translatedCollection.TryRemove(originalText, out _);
+                        defParam.UndoInject();
+                        foundAndRestored = true;
+                        break;
+                    }
+                }
+                else
+                {
+                    if (defParam.original == originalText)
+                    {
+                        defParam.UndoInject();
+                        foundAndRestored = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (foundAndRestored) return;
+            
+            // Try Keyed if not found in DefInjection - restore original
+            foreach (var keyedParam in keyedMissing)
+            {
+                if (keyedParam.value.value == originalText)
+                {
+                    keyedParam.UndoInject();
+                    break;
+                }
+            }
+        }
+
 
 
         internal static void ClearDefInjectedTranslations()
@@ -297,6 +479,18 @@ namespace AutoTranslation
             {
                 injection.ClearTranslation();
             }
+        }
+
+        /// <summary>
+        /// Completely clears the injection cache bags. Use with caution - requires re-finding all missing injections.
+        /// </summary>
+        internal static void ClearInjectionCaches()
+        {
+            // ConcurrentBag doesn't have Clear(), so we need to dequeue everything
+            while (defInjectedMissing.TryTake(out _)) { }
+            while (keyedMissing.TryTake(out _)) { }
+            
+            Log.Message(AutoTranslation.LogPrefix + "Injection caches cleared. defInjected and keyed bags are now empty.");
         }
 
         internal static IEnumerable<Type> defTypesTranslated
@@ -343,8 +537,11 @@ namespace AutoTranslation
             }
 
             // 캐시 저장
-            CacheFileTool.Export(nameof(TranslatorManager.CachedTranslations),
-                new Dictionary<string, string>(TranslatorManager.CachedTranslations));
+            foreach (var pair in TranslatorManager.CachedTranslations)
+            {
+                TranslationCacheManager.AddOrUpdate(pair.Key, pair.Value);
+            }
+            TranslationCacheManager.Save(nameof(TranslatorManager.CachedTranslations));
 
             // 모드 번역 다시 주입
             InjectMissingDefInjection(mod);

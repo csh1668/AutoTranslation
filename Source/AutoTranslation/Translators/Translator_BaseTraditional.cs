@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Verse;
 
 namespace AutoTranslation.Translators
 {
@@ -15,6 +16,8 @@ namespace AutoTranslation.Translators
         public virtual string StartLanguage => "auto";
         public abstract string TranslateLanguage { get; }
 
+        public TranslatorSettings Settings { get; set; }
+
         public abstract void Prepare();
 
         public abstract bool TryTranslate(string text, out string translated);
@@ -26,5 +29,9 @@ namespace AutoTranslation.Translators
         }
 
         public abstract bool SupportsCurrentLanguage();
+
+        public virtual void DrawSettings(Listing_Standard ls)
+        {
+        }
     }
 }

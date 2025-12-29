@@ -28,6 +28,9 @@ namespace AutoTranslation
         {
             settings = GetSettings<Settings>();
 
+            // Perform migration for existing users
+            MigrationHelper.PerformMigration();
+
             var h = new Harmony("seohyeon.autotranslation");
             h.PatchAll();
             Log.Message(LogPrefix + "Harmony patches are applied!");
