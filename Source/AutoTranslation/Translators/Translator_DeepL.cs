@@ -23,12 +23,6 @@ namespace AutoTranslation.Translators
         public override bool RequiresKey => true;
         public override string TranslateLanguage => _cachedTranslateLanguage ?? (_cachedTranslateLanguage = GetTranslateLanguage());
 
-        public override void Prepare()
-        {
-            if (string.IsNullOrEmpty(Settings.APIKey))
-                return;
-            Ready = true;
-        }
 
         public override bool TryTranslate(string text, out string translated)
         {

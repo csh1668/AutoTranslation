@@ -105,7 +105,7 @@
     <Compile Include="Translators\Translator_Gemini.cs" />
     <Compile Include="Translators\Translator_Google.cs" />
     <Compile Include="Translators\Translator_Ollama.cs" />
-    <Compile Include="Translators\Translator_BaseOnlineAIModel.cs" />
+    <Compile Include="Translators\Translator_BaseAIModel.cs" />
     <Compile Include="Translators\Translator_BaseTraditional.cs" />
   </ItemGroup>
   <ItemGroup />

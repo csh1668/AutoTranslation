@@ -60,14 +60,14 @@ namespace AutoTranslation
         {
             var pattern = $"\"{key}\"\\s*:\\s*\"((?:\\\\\"|[^\"])*)\"";
             var match = Regex.Match(json, pattern);
-            return match.Success ? match.Groups[1].Value.Replace("\\\"", "\"") : null;
+            return match.Success ? match.Groups[1].Value.Replace("\\\"", "\"").Trim() : null;
         }
 
         public static List<string> GetStringValuesFromJson(this string json, string key)
         {
             var pattern = $"\"{key}\"\\s*:\\s*\"((?:\\\\\"|[^\"])*)\"";
             var matches = Regex.Matches(json, pattern);
-            return matches.Cast<Match>().Select(match => match.Groups[1].Value.Replace("\\\"", "\"")).ToList();
+            return matches.Cast<Match>().Select(match => match.Groups[1].Value.Replace("\\\"", "\"").Trim()).ToList();
         }
 
         public static string GetResponseAndReadText(this WebRequest request)

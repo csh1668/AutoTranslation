@@ -9,22 +9,15 @@ using Verse;
 
 namespace AutoTranslation.Translators
 {
-    public abstract class Translator_BaseOnlineAIModel : ITranslator
+    public abstract class Translator_BaseAIModel : ITranslator
     {
         public abstract string Name { get; }
-        public bool Ready { get; set; }
-        public bool RequiresKey => true;
+        public virtual bool RequiresKey => true;
 
         public virtual string Model => _model ?? (_model = Settings.SelectedModel);
         public List<string> Models => _models ?? (_models = GetModels());
 
         public abstract string BaseURL { get; }
-
-        public virtual void Prepare()
-        {
-            if (string.IsNullOrEmpty(Settings.APIKey)) return;
-            Ready = true;
-        }
 
         public bool TryTranslate(string text, out string translated)
         {
@@ -105,7 +98,6 @@ namespace AutoTranslation.Translators
             _rotater = null;
             _prompt = null;
             _baseURL = null;
-            Prepare();
         }
 
         protected abstract string GetResponseUnsafe(string text);

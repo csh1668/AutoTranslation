@@ -10,7 +10,7 @@ using Verse;
 
 namespace AutoTranslation.Translators
 {
-    public class Translator_Ollama: Translator_BaseOnlineAIModel
+    public class Translator_Ollama: Translator_BaseAIModel
     {
         public override string Name => "Ollama";
         public override string BaseURL => "http://localhost:11434/v1/";
@@ -23,7 +23,8 @@ namespace AutoTranslation.Translators
             {
                 var request = WebRequest.Create($"{RequestURL}models");
                 request.Method = "GET";
-                request.Headers.Add("Authorization", "Bearer " + APIKey);
+                if (!string.IsNullOrEmpty(APIKey.Trim()))
+                    request.Headers.Add("Authorization", "Bearer " + APIKey);
 
                 var raw = request.GetResponseAndReadText();
                 var models = raw.GetStringValuesFromJson("id");
@@ -56,7 +57,7 @@ namespace AutoTranslation.Translators
             var request = WebRequest.Create($"{RequestURL}chat/completions");
             request.Method = "POST";
             request.ContentType = "application/json";
-            request.Headers.Add("Authorization", "Bearer " + APIKey);
+            if (!string.IsNullOrEmpty(APIKey.Trim())) request.Headers.Add("Authorization", "Bearer " + APIKey);
 
             using (var sw = new StreamWriter(request.GetRequestStream()))
             {
@@ -72,12 +73,7 @@ namespace AutoTranslation.Translators
             
             try
             {
-                content = response.GetStringValueFromJson("choices[0].message.content");
-                
-                if (string.IsNullOrEmpty(content))
-                {
-                    content = response.GetStringValueFromJson("content");
-                }
+                content = response.GetStringValueFromJson("content");
             }
             catch
             {
@@ -87,14 +83,14 @@ namespace AutoTranslation.Translators
                 }
                 catch
                 {
-                    return "";
+                    return content;
                 }
             }
 
             if (string.IsNullOrEmpty(content))
                 return "";
 
-            content = content.Replace(@"\u003c", "<").Replace(@"\u003e", ">");
+            content = content.Replace(@"\u003c", "<").Replace(@"\u003e", ">").Replace(@"\u000a", "\n");
 
             content = System.Text.RegularExpressions.Regex.Replace(content, @"<think>.*?</think>", "", 
                 System.Text.RegularExpressions.RegexOptions.Singleline | 

@@ -40,6 +40,7 @@ namespace AutoTranslation
                     var key = StripInvalidXmlChars(k);
                     if (string.IsNullOrEmpty(key) || string.IsNullOrEmpty(v))
                         continue;
+                    if (char.IsDigit(key[0])) continue;
                     try
                     {
                         e.AppendElement(key, v);

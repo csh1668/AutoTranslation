@@ -30,6 +30,7 @@ namespace AutoTranslation
 
         private static readonly ConcurrentDictionary<string, byte> _inQueue = new ConcurrentDictionary<string, byte>();
         private static Task _translationThread;
+        private static Task[] _translationThreads;
         private static Timer _cacheSaver;
         private static readonly Regex StringFormatSymbolsRegex = new Regex("{.*?}");
         private static readonly StringBuilder sb = new StringBuilder(1024);
@@ -43,15 +44,13 @@ namespace AutoTranslation
             foreach (var translatorType in translatorTypes)
             {
                 var t = (ITranslator)Activator.CreateInstance(translatorType);
-                t.Prepare();
                 translators.Add(t);
             }
             CurrentTranslator = GetTranslator(Settings.TranslatorName);
-            if (CurrentTranslator?.Ready == false) CurrentTranslator = null;
 
             if (CurrentTranslator == null)
             {
-                CurrentTranslator = translators.FirstOrDefault(x => x.Ready);
+                CurrentTranslator = translators.FirstOrDefault(x => x.Name == "Google");
                 Log.Error(AutoTranslation.LogPrefix +
                             $"Selected translator named {Settings.TranslatorName} is not ready, changing to other translator.. {CurrentTranslator?.Name}");
             }
@@ -129,50 +128,15 @@ namespace AutoTranslation
             }
 
             Working = true;
-            _translationThread = Task.Factory.StartNew(() =>
+
+            _translationThreads = new Task[Settings.ConcurrentWorkerCount];
+            for (int i = 0; i < Settings.ConcurrentWorkerCount; i++)
             {
-                while (true)
+                _translationThreads[i] = Task.Factory.StartNew(DoInnerThreadWork).ContinueWith(t =>
                 {
-                    if (!Working)
-                    {
-                        Thread.Sleep(1000);
-                        continue;
-                    }
-                    while (_queue.Count > 0)
-                    {
-                        if (!_queue.TryDequeue(out var pair)) continue;
-
-                        _inQueue.TryRemove(pair.Key, out _);
-                        var translated = string.Empty;
-                        var success = true;
-                        if (pair.Key.Length > 200)
-                        {
-                            translated = pair.Key.Tokenize().Aggregate(translated, (current, token) =>
-                            {
-                                success &= CurrentTranslator.TryTranslate(token, out var tmp);
-                                return current + ' ' + tmp;
-                            });
-                        }
-                        else
-                        {
-                            success = CurrentTranslator.TryTranslate(pair.Key, out translated);
-                        }
-
-                        if (success)
-                        {
-                            translated = PolishText(translated);
-                            //translated = UnityWebRequest.UnEscapeURL(translated, Encoding.UTF8).Trim();
-                        }
-                        workCnt++;
-                        //_finished.Enqueue(pair);
-                        pair.Value(translated, success);
-                    }
-                    Thread.Sleep(1000);
-                }
-            }).ContinueWith(t =>
-            {
-                Log.Warning($"Translation thread was killed! {t.Exception?.Message}");
-            });
+                    Log.Warning($"Translation thread {i} was killed! {t.Exception?.Message}");
+                });
+            }
 
             _cacheSaver = new Timer(state =>
             {
@@ -192,6 +156,50 @@ namespace AutoTranslation
                     Log.Message($"ERROR: {e.Message}");
                 }
             }, null, 0, 60000);
+        }
+
+        private static void DoInnerThreadWork()
+        {
+            while (true)
+            {
+                if (!Working)
+                {
+                    Thread.Sleep(1000);
+                    continue;
+                }
+                while (_queue.Count > 0)
+                {
+                    if (Settings.SleepTime > 0) Thread.Sleep(Settings.SleepTime);
+
+                    if (!_queue.TryDequeue(out var pair)) continue;
+
+                    _inQueue.TryRemove(pair.Key, out _);
+                    var translated = string.Empty;
+                    var success = true;
+                    if (pair.Key.Length > 200)
+                    {
+                        translated = pair.Key.Tokenize().Aggregate(translated, (current, token) =>
+                        {
+                            success &= CurrentTranslator.TryTranslate(token, out var tmp);
+                            return current + ' ' + tmp;
+                        });
+                    }
+                    else
+                    {
+                        success = CurrentTranslator.TryTranslate(pair.Key, out translated);
+                    }
+
+                    if (success)
+                    {
+                        translated = PolishText(translated);
+                        //translated = UnityWebRequest.UnEscapeURL(translated, Encoding.UTF8).Trim();
+                    }
+                    workCnt++;
+                    //_finished.Enqueue(pair);
+                    pair.Value(translated, success);
+                }
+                Thread.Sleep(1000);
+            }
         }
 
         public static void Translate(string orig, Action<string> callBack) => Translate(orig, string.Empty, callBack);

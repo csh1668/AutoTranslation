@@ -11,7 +11,7 @@ using static System.Net.Mime.MediaTypeNames;
 
 namespace AutoTranslation.Translators
 {
-    public class Translator_Gemini : Translator_BaseOnlineAIModel
+    public class Translator_Gemini : Translator_BaseAIModel
     {
         public override string Name => "Gemini";
 

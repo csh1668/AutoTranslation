@@ -20,6 +20,8 @@ namespace AutoTranslation
         public static string TranslatorName = "Google";
         public static bool ShowOriginal = false;
         public static HashSet<string> BlackListModPackageIds = new HashSet<string>();
+        public static int SleepTime = 0;
+        public static int ConcurrentWorkerCount = 1;
 
         public static string SelectedModel = string.Empty;
         public static string CustomBaseURL = string.Empty;
@@ -42,6 +44,9 @@ namespace AutoTranslation
             Scribe_Values.Look(ref SelectedModel, "AutoTranslation_SelectedModel", string.Empty);
             Scribe_Values.Look(ref CustomBaseURL, "AutoTranslation_CustomBaseURL", string.Empty);
             Scribe_Values.Look(ref CustomPrompt, "AutoTranslation_CustomPrompt", string.Empty);
+            Scribe_Values.Look(ref SleepTime, "AutoTranslation_SleepTime", 0);
+            Scribe_Values.Look(ref ConcurrentWorkerCount, "AutoTranslation_WorkerCount", 1);
+
             Scribe_Collections.Look(ref BlackListModPackageIds, "AutoTranslation_WhiteListModPackageIds", LookMode.Value);
             if (BlackListModPackageIds == null) BlackListModPackageIds = new HashSet<string>();
         }
@@ -256,7 +261,7 @@ namespace AutoTranslation
                 APIKey = Widgets.TextEntryLabeled(textRect, "API Key:", APIKey);
             }
 
-            if (targetTranslator is Translator_BaseOnlineAIModel aiTranslator)
+            if (targetTranslator is Translator_BaseAIModel aiTranslator)
             {
                 ls.Label("AT_Setting_BaseURL".Translate() + aiTranslator.BaseURL);
                 var textRect = ls.GetRect(Text.LineHeight);
@@ -296,7 +301,7 @@ namespace AutoTranslation
 
             if (Widgets.ButtonText(mid, "AT_Setting_TestTranslation".Translate()))
             {
-                if (targetTranslator is Translator_BaseOnlineAIModel ait)
+                if (targetTranslator is Translator_BaseAIModel ait)
                 {
                     ait.ResetSettings();
                 }
@@ -330,6 +335,10 @@ namespace AutoTranslation
             ls.Label("AT_Setting_Misc".Translate());
             ls.GapLine();
 
+            SleepTime = (int)ls.SliderLabeled("AT_Setting_SleepTime".Translate(SleepTime), SleepTime, 0, 5000);
+
+            ConcurrentWorkerCount = (int)ls.SliderLabeled("AT_Setting_WorkerCount".Translate(ConcurrentWorkerCount), ConcurrentWorkerCount, 1, 5);
+
             if (ls.ButtonText("AT_Setting_ResetDefCache".Translate()))
             {
                 ResetDefCaches();
@@ -360,27 +369,20 @@ namespace AutoTranslation
             if (ls.ButtonText("AT_Setting_RestartWork".Translate()))
             {
                 var t = TranslatorManager.GetTranslator(TranslatorName);
-                if (t is Translator_BaseOnlineAIModel aiTranslator)
+                if (t is Translator_BaseAIModel aiTranslator)
                 {
                     aiTranslator.ResetSettings();
                 }
-                if (t.Ready)
-                {
-                    TranslatorManager.ClearQueue();
-                    TranslatorManager.CurrentTranslator = t;
+                TranslatorManager.ClearQueue();
+                TranslatorManager.CurrentTranslator = t;
 
-                    InjectionManager.UndoInjectAll();
-                    InjectionManager.ClearDefInjectedTranslations();
-                    InjectionManager.ReverseTranslator.Clear();
+                InjectionManager.UndoInjectAll();
+                InjectionManager.ClearDefInjectedTranslations();
+                InjectionManager.ReverseTranslator.Clear();
 
-                    InjectionManager.InjectAll();
+                InjectionManager.InjectAll();
 
-                    Messages.Message("AT_Message_RestartWork".Translate(), MessageTypeDefOf.NeutralEvent);
-                }
-                else
-                {
-                    Messages.Message("AT_Message_RestartFailed".Translate(), MessageTypeDefOf.NegativeEvent);
-                }
+                Messages.Message("AT_Message_RestartWork".Translate(), MessageTypeDefOf.NeutralEvent);
             }
 
             if (ls.ButtonText("AT_Setting_OpenDir".Translate()))

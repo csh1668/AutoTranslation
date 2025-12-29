@@ -10,7 +10,7 @@ using Verse;
 
 namespace AutoTranslation.Translators
 {
-    public class Translator_ChatGPT : Translator_BaseOnlineAIModel
+    public class Translator_ChatGPT : Translator_BaseAIModel
     {
         public override string Name => "ChatGPT";
         public override string BaseURL => "https://api.openai.com/v1/";

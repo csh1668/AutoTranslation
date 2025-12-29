@@ -10,7 +10,7 @@ using Verse;
 
 namespace AutoTranslation.Translators
 {
-    public class Translator_Claude : Translator_BaseOnlineAIModel
+    public class Translator_Claude : Translator_BaseAIModel
     {
         public override string Name => "Claude";
 

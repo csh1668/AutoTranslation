@@ -27,21 +27,6 @@ namespace AutoTranslation.Translators
         public override string TranslateLanguage => _cachedTranslateLanguage ?? (_cachedTranslateLanguage = GetTranslateLanguage());
         public override bool RequiresKey => false;
 
-        public override void Prepare()
-        {
-
-            try
-            {
-                var resp = GetResponseUnsafe(testUrl);
-                if (string.IsNullOrEmpty(resp)) throw new Exception("no response");
-                Ready = true;
-            }
-            catch (Exception ex)
-            {
-                Log.Message(AutoTranslation.LogPrefix + $"Preparing Translator named '{Name}' was failed, reason: {ex.Message}");
-            }
-        }
-
         public override bool TryTranslate(string text, out string translated)
         {
             try

@@ -20,8 +20,10 @@
     <AT_Setting_CustomPrompt>사용자 지정 시스템 프롬프트: </AT_Setting_CustomPrompt>
     <AT_Setting_BaseURL>기본 URL: </AT_Setting_BaseURL>
     <AT_Setting_CustomBaseURL>사용자 지정 URL: </AT_Setting_CustomBaseURL>
+    <AT_Setting_WorkerCount>동시 작업자 수 ({0}개)</AT_Setting_WorkerCount>
 
     <AT_Setting_Misc>::기타::</AT_Setting_Misc>
+    <AT_Setting_SleepTime>요청 간 대기 시간 ({0}ms)</AT_Setting_SleepTime>
     <AT_Setting_ResetDefCache>모든 Def 캐시 데이터 초기화 (몇몇 def들이 번역되지 않았을 경우)</AT_Setting_ResetDefCache>
 
     <AT_Status1>아직 번역이 진행 중입니다. 하지만 평소처럼 게임을 플레이하실 수 있습니다.</AT_Status1>

@@ -8,16 +8,15 @@ namespace AutoTranslation
 {
     public class APIKeyRotater
     {
-        private readonly Queue<string> keys = new Queue<string>();
+        //private readonly Queue<string> keys = new Queue<string>();
+        private readonly string[] keys;
+        private int _index = 0;
 
         public APIKeyRotater(IEnumerable<string> keys)
         {
-            foreach (var key in keys)
-            {
-                this.keys.Enqueue(key.Trim());
-            }
+            this.keys = keys.Select(key => key.Trim()).ToArray();
 
-            if (this.keys.Count == 0)
+            if (this.keys.Length == 0)
             {
                 throw new ArgumentException("No keys provided");
             }
@@ -27,18 +26,18 @@ namespace AutoTranslation
         {
             get
             {
-                var key = keys.Peek();
+                var key = keys[_index];
                 Rotate();
                 return key;
             }
         }
 
-        public string KeyNoRotate => keys.Peek();
-        public int Count => keys.Count;
+        public string KeyNoRotate => keys[_index];
+        public int Count => keys.Length;
 
         public void Rotate()
         {
-            keys.Enqueue(keys.Dequeue());
+            _index = (_index + 1) % keys.Length;
         }
     }
 }

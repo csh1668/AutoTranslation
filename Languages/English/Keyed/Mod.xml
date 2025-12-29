@@ -19,6 +19,8 @@
     <AT_Setting_CustomPrompt>Custom system prompt: </AT_Setting_CustomPrompt>
     <AT_Setting_BaseURL>Base URL: </AT_Setting_BaseURL>
     <AT_Setting_CustomBaseURL>Custom base URL: </AT_Setting_CustomBaseURL>
+    <AT_Setting_SleepTime>Sleep time between requests ({0}ms)</AT_Setting_SleepTime>
+    <AT_Setting_WorkerCount>Concurrent worker count ({0})</AT_Setting_WorkerCount>
 
     <AT_Setting_Misc>::Misc::</AT_Setting_Misc>
     <AT_Setting_ResetDefCache>Reset all Def cache data (If some defs are not translated)</AT_Setting_ResetDefCache>

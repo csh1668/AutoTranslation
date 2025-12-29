@@ -10,10 +10,7 @@ namespace AutoTranslation.Translators
     {
         string Name { get; }
 
-        bool Ready { get; set; }
         bool RequiresKey { get; }
-
-        void Prepare();
         bool TryTranslate(string text, out string translated);
         bool TryTranslate(string text, out string translated, bool skipRetry);
     }
