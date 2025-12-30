@@ -10,8 +10,9 @@ namespace AutoTranslation
 {
     public static class NetworkHelper
     {
-        private const int DEFAULT_RETRIES = 3;
-        private const int BASE_DELAY_MS = 1000;
+        private const int DEFAULT_RETRIES = 5;
+        private const int BASE_DELAY_MS = 5000;
+        private const int RATE_LIMIT_DELAY_MS = 30000; // 30 seconds for 429 errors
 
         public static string Post(string url, string body, Dictionary<string, string> headers = null, string contentType = "application/json", int maxRetries = DEFAULT_RETRIES)
         {
@@ -70,14 +71,16 @@ namespace AutoTranslation
                     var response = ex.Response as HttpWebResponse;
                     if (response != null && (int)response.StatusCode == 429) // Too Many Requests
                     {
-                        int delay = BASE_DELAY_MS * (int)Math.Pow(2, attempts - 1); // Exponential backoff
-                        Log.Warning($"{AutoTranslation.LogPrefix} Rate limit (429) hit. Retrying in {delay}ms... ({attempts}/{maxRetries})");
+                        // For rate limits, use minimum 30 seconds with exponential backoff
+                        int exponentialDelay = BASE_DELAY_MS * (int)Math.Pow(2, attempts - 1);
+                        int delay = Math.Max(RATE_LIMIT_DELAY_MS, exponentialDelay);
+                        Log.Warning($"{AutoTranslation.LogPrefix} Rate limit (429) hit. Retrying in {delay}ms ({delay/1000}s)... ({attempts}/{maxRetries})");
                         Thread.Sleep(delay);
                     }
                     else if (ex.Status == WebExceptionStatus.Timeout || ex.Status == WebExceptionStatus.ConnectionClosed)
                     {
-                        int delay = BASE_DELAY_MS * attempts;
-                        Log.Warning($"{AutoTranslation.LogPrefix} Network error ({ex.Status}). Retrying in {delay}ms... ({attempts}/{maxRetries})");
+                        int delay = BASE_DELAY_MS * (int)Math.Pow(2, attempts - 1); // Exponential backoff
+                        Log.Warning($"{AutoTranslation.LogPrefix} Network error ({ex.Status}). Retrying in {delay}ms ({delay/1000}s)... ({attempts}/{maxRetries})");
                         Thread.Sleep(delay);
                     }
                     else

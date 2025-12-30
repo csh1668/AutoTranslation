@@ -297,9 +297,14 @@ namespace AutoTranslation
             
             Widgets.BeginScrollView(listRect, ref scrollbarVector, viewRect);
 
+            // Virtual scrolling: only render visible items
+            int firstVisibleIndex = Mathf.Max(0, Mathf.FloorToInt(scrollbarVector.y / entryHeight));
+            int lastVisibleIndex = Mathf.Min(filteredMods.Count - 1, Mathf.CeilToInt((scrollbarVector.y + listRect.height) / entryHeight));
+            
+            // Cache translation stats to avoid repeated calls
             var translationStats = InjectionManager.GetTranslationStatsByPackageId();
 
-            for (int i = 0; i < filteredMods.Count; i++)
+            for (int i = firstVisibleIndex; i <= lastVisibleIndex; i++)
             {
                 var curMod = filteredMods[i];
                 var entryRect = new Rect(0f, i * entryHeight, viewRect.width, entryHeight);
@@ -722,7 +727,7 @@ namespace AutoTranslation
             }
 
             float totalHeight = 0f;
-            foreach (var modGroup in _editorGroupedCache.OrderBy(g => g.Key))
+            foreach (var modGroup in _editorGroupedCache.OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
             {
                 totalHeight += GroupHeaderHeight;
                 if (_editorExpandedGroups.Contains(modGroup.Key))
