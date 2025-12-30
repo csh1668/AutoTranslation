@@ -54,10 +54,16 @@ namespace AutoTranslation.Translators
                     ""format"": ""text""{apiKeyField}
                 }}";
 
+                Log.Message(AutoTranslation.LogPrefix + $"{Name}: Request URL: {url}");
+                Log.Message(AutoTranslation.LogPrefix + $"{Name}: Request body: {body}");
+                Log.Message(AutoTranslation.LogPrefix + $"{Name}: Target language: {TranslateLanguage}");
+
                 var headers = new Dictionary<string, string>();
                 headers["Content-Type"] = "application/json";
 
                 var response = NetworkHelper.Post(url, body, headers);
+                Log.Message(AutoTranslation.LogPrefix + $"{Name}: Response: {response?.Substring(0, Math.Min(200, response?.Length ?? 0))}");
+                
                 var translatedProtected = response.GetStringValueFromJson("translatedText");
                 
                 if (string.IsNullOrEmpty(translatedProtected))

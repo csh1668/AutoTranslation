@@ -12,6 +12,22 @@ using static Verse.DefInjectionPackage;
 
 namespace AutoTranslation
 {
+    // Custom comparer that uses reference equality only (doesn't call GetHashCode/Equals)
+    internal class ReferenceEqualityComparer : IEqualityComparer<object>
+    {
+        public static readonly ReferenceEqualityComparer Instance = new ReferenceEqualityComparer();
+        
+        public new bool Equals(object x, object y)
+        {
+            return ReferenceEquals(x, y);
+        }
+        
+        public int GetHashCode(object obj)
+        {
+            return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(obj);
+        }
+    }
+
     public static class DefInjectionUtilityCustom
     {
         public delegate void Traverser(string normalizedPath, string suggestedPath, bool isCollection, string curValue,
@@ -241,23 +257,31 @@ namespace AutoTranslation
             }
         }
 
+        private const int MaxRecursionDepth = 15;
+
         private static void ForEachPossibleDefInjectionInDef(Def def, Traverser action)
         {
-            var visited = new HashSet<object>();
-            ForEachPossibleDefInjectionInDefRecursive(def, def.defName, def.defName, visited, def, action);
+            // Use ReferenceEqualityComparer to avoid calling GetHashCode/Equals on potentially problematic objects
+            var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
+            ForEachPossibleDefInjectionInDefRecursive(def, def.defName, def.defName, visited, def, action, 0);
         }
 
-        private static void ForEachPossibleDefInjectionInDefRecursive(object cur, string curNormalizedPath, string curSuggestedPath, HashSet<object> visited, Def def, Traverser action)
+        private static void ForEachPossibleDefInjectionInDefRecursive(object cur, string curNormalizedPath, string curSuggestedPath, HashSet<object> visited, Def def, Traverser action, int depth)
         {
             if (cur == null || cur is Thing) return;
+            
+            // Prevent stack overflow by limiting recursion depth
+            if (depth >= MaxRecursionDepth) return;
             
             // Skip primitive and common value types (performance optimization)
             var curType = cur.GetType();
             if (_skipTypes.Contains(curType)) return;
             
-            if (!curType.IsValueType && visited.Contains(cur))
-                return;
-            visited.Add(cur);
+            if (!curType.IsValueType)
+            {
+                if (visited.Contains(cur)) return;
+                visited.Add(cur);
+            }
             
             foreach (var field in GetFieldsOptimized(cur.GetType()))
             {
@@ -304,7 +328,7 @@ namespace AutoTranslation
                             }
                             var nxtNormalizedPath = $"{curNormalizedPath}.{field.Name}.{idx}";
                             var nxtSuggestedPath = $"{curSuggestedPath}.{field.Name}.{handle}";
-                            ForEachPossibleDefInjectionInDefRecursive(item, nxtNormalizedPath, nxtSuggestedPath, visited, def, action);
+                            ForEachPossibleDefInjectionInDefRecursive(item, nxtNormalizedPath, nxtSuggestedPath, visited, def, action, depth + 1);
                         }
                         idx++;
                     }
@@ -312,7 +336,7 @@ namespace AutoTranslation
                 else if (nxt != null && GenTypes.IsCustomType(nxt.GetType()))
                 {
                     ForEachPossibleDefInjectionInDefRecursive(nxt, curNormalizedPath + "." + field.Name,
-                        curSuggestedPath + "." + field.Name, visited, def, action);
+                        curSuggestedPath + "." + field.Name, visited, def, action, depth + 1);
                 }
             }
         }
