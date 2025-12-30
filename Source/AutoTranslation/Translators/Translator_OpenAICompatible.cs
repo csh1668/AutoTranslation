@@ -10,8 +10,7 @@ namespace AutoTranslation.Translators
     {
         public override string Name => "OpenAI Compatible (Local/Other)";
         
-        // Default to local generic, but user can change in settings
-        public override string BaseURL => "http://localhost:11434/v1/"; 
+        public override string BaseURL => "http://localhost:11434/"; 
 
         public override bool RequiresKey => false; // Often not needed for local
 
@@ -19,25 +18,50 @@ namespace AutoTranslation.Translators
         {
             try
             {
-                var url = Helpers.CombineUrl(RequestURL, "models");
                 var headers = new Dictionary<string, string>();
                 if (!string.IsNullOrEmpty(APIKey))
                 {
                     headers.Add("Authorization", "Bearer " + APIKey);
                 }
 
-                var raw = NetworkHelper.Get(url, headers);
-                
-                // Try standard OpenAI format
-                var models = raw.GetStringValuesFromJson("id");
-                
-                // Fallback for some local servers that might return just a list
-                if (models == null || models.Count == 0)
+                try
                 {
-                    models = raw.GetStringValuesFromJson("name");
+                    var openaiUrl = Helpers.CombineUrl(RequestURL, "v1", "models");
+                    var raw = NetworkHelper.Get(openaiUrl, headers);
+                    
+                    // Standard OpenAI format: {"data": [{"id": "model-name"}]}
+                    var models = raw.GetStringValuesFromJson("id");
+                    
+                    if (models != null && models.Count > 0)
+                    {
+                        return models;
+                    }
+                }
+                catch
+                {
+                    // OpenAI endpoint failed, try Ollama endpoint
                 }
 
-                return models ?? new List<string>();
+                // Try Ollama endpoint (Ollama-specific)
+                try
+                {
+                    var ollamaUrl = Helpers.CombineUrl(RequestURL, "api", "tags");
+                    var raw = NetworkHelper.Get(ollamaUrl, headers);
+                    
+                    // Ollama format: {"models": [{"name": "llama2:latest"}]}
+                    var models = raw.GetStringValuesFromJson("name");
+                    
+                    if (models != null && models.Count > 0)
+                    {
+                        return models;
+                    }
+                }
+                catch
+                {
+                    // Both endpoints failed
+                }
+
+                return new List<string>();
             }
             catch (System.Exception)
             {
@@ -57,7 +81,8 @@ namespace AutoTranslation.Translators
 
         protected override string GetResponseUnsafe(string text, string prompt)
         {
-            var url = Helpers.CombineUrl(RequestURL, "chat", "completions");
+            // Use standard OpenAI Chat Completions endpoint (supported by LM Studio, Ollama, etc.)
+            var url = Helpers.CombineUrl(RequestURL, "v1", "chat", "completions");
             
             // Standard OpenAI Chat Completion Body
             var requestBody = $@"{{
