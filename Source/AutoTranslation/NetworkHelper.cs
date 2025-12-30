@@ -64,7 +64,7 @@ namespace AutoTranslation
                 {
                     if (attempts > maxRetries)
                     {
-                        Log.Error($"{AutoTranslation.LogPrefix} Network request failed after {maxRetries} attempts. URL: {context}. Error: {ex.Message}");
+                        Log.Warning($"{AutoTranslation.LogPrefix} Network request failed after {maxRetries} attempts. URL: {context}. Error: {ex.Message}");
                         throw;
                     }
 
@@ -91,7 +91,7 @@ namespace AutoTranslation
                 }
                 catch (Exception ex)
                 {
-                    Log.Error($"{AutoTranslation.LogPrefix} Unexpected error during request to {context}: {ex}");
+                    Log.Warning($"{AutoTranslation.LogPrefix} Unexpected error during request to {context}: {ex}");
                     throw;
                 }
             }
