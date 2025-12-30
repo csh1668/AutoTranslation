@@ -74,6 +74,8 @@
     <AT_Setting_Editor_Language>언어</AT_Setting_Editor_Language>
     <AT_Setting_Editor_Actions>작업</AT_Setting_Editor_Actions>
     <AT_Setting_Editor_Save>저장</AT_Setting_Editor_Save>
+    <AT_Setting_Editor_Refresh>새로고침</AT_Setting_Editor_Refresh>
+    <AT_Setting_Editor_Refreshed>번역 목록이 새로고침되었습니다.</AT_Setting_Editor_Refreshed>
     <AT_Setting_Editor_ExpandAll>모두 펼치기</AT_Setting_Editor_ExpandAll>
     <AT_Setting_Editor_CollapseAll>모두 접기</AT_Setting_Editor_CollapseAll>
     <AT_Setting_Editor_Total>총합</AT_Setting_Editor_Total>

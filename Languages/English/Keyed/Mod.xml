@@ -74,6 +74,8 @@
     <AT_Setting_Editor_Language>Lang</AT_Setting_Editor_Language>
     <AT_Setting_Editor_Actions>Actions</AT_Setting_Editor_Actions>
     <AT_Setting_Editor_Save>Save</AT_Setting_Editor_Save>
+    <AT_Setting_Editor_Refresh>Refresh</AT_Setting_Editor_Refresh>
+    <AT_Setting_Editor_Refreshed>Translation list has been refreshed.</AT_Setting_Editor_Refreshed>
     <AT_Setting_Editor_ExpandAll>Expand All</AT_Setting_Editor_ExpandAll>
     <AT_Setting_Editor_CollapseAll>Collapse All</AT_Setting_Editor_CollapseAll>
     <AT_Setting_Editor_Total>Total</AT_Setting_Editor_Total>

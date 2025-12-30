@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
+using Verse;
 
 namespace AutoTranslation
 {
@@ -66,6 +67,8 @@ namespace AutoTranslation
             catch (Exception)
             {
                 // Fallback: return a delegate that uses reflection
+                var msg = AutoTranslation.LogPrefix + $"Failed to compile getter for field {field.Name} on type {field.DeclaringType.Name}";
+                Log.WarningOnce(msg, msg.GetHashCode());
                 return obj => field.GetValue(obj);
             }
         }
@@ -85,4 +88,5 @@ namespace AutoTranslation
         public static int CacheSize => _getterCache.Count;
     }
 }
+
 

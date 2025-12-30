@@ -90,8 +90,8 @@ namespace AutoTranslation
             int vietnameseCount = VietnameseRegex.Matches(text).Count;
             int latinCount = LatinRegex.Matches(text).Count;
 
-            // 비율 계산 (최소 30% 이상이면 해당 언어로 판단)
-            const double threshold = 0.3;
+            // 비율 계산 (최소 20% 이상이면 해당 언어로 판단)
+            const double threshold = 0.2;
             
             // 각 언어의 비율 계산
             double koreanRatio = (double)koreanCount / totalChars;

@@ -47,7 +47,6 @@ namespace AutoTranslation
             var key = (value, fi?.Name ?? "");
             if (_shouldTranslateCache.TryGetValue(key, out var result))
             {
-                PerformanceMonitor.RecordCacheHit();
                 return result;
             }
             
@@ -56,7 +55,6 @@ namespace AutoTranslation
 
         private static bool ShouldTranslateInternal(string value, string fieldName, FieldInfo fi)
         {
-            PerformanceMonitor.RecordCacheMiss();
             
             // 0. Language detection check (prevent re-translating already translated text)
             // 이미 목표 언어로 작성된 텍스트는 번역하지 않음
@@ -65,15 +63,14 @@ namespace AutoTranslation
                 return false;
             }
             
-            // 1. Fast checks first (field name based)
-            if (fieldName == "label" || fieldName == "description" || 
-                fieldName.EndsWith("Label") || fieldName.EndsWith("Description")) 
-                return true;
-            
             if (BlacklistedFields.Contains(fieldName)) return false;
 
-            // 2. Length check (cheap)
-            if (value.Length < 2 || value.Length > 1000) return false;
+            // 1. Length check (cheap, do early)
+            if (value.Length < 2) return false;
+
+            // 2. Numeric-only check (cheap)
+            // 숫자만 있는 경우 번역 불필요
+            if (value.All(char.IsDigit)) return false;
 
             // 3. Character frequency checks (faster than regex)
             int slashCount = 0;
@@ -93,16 +90,24 @@ namespace AutoTranslation
             if (FilePathRegex.IsMatch(value)) return false;
             if (OnlySymbolsRegex.IsMatch(value)) return false;
             
-            // ID heuristic: CamelCase or snake_case without spaces usually isn't prose
-            if (IdLikeRegex.IsMatch(value)) return false;
-
+            // 5. Field name based checks (after basic validation)
+            // label/description 필드는 번역 대상
+            if (fieldName == "label" || fieldName == "description" || 
+                fieldName.EndsWith("Label") || fieldName.EndsWith("Description")) 
+                return true;
+            
+            // 6. ID heuristic: 언더스코어가 있으면 ID로 간주
+            // 예: "Building_Roof_Metal", "Apparel_Pants_Worker"
+            if (value.Contains('_') && !hasSpace)
+            {
+                return false;
+            }
+            
             return true;
         }
 
         public static void FindMissingDefInjection(Action<DefInjectionUntranslatedParams> callBack)
         {
-            PerformanceMonitor.StartDefInjectionMonitoring();
-            
             AddBlackList();
 
             var injectionsByNormalizedPath = new Dictionary<string, DefInjection>();
@@ -209,8 +214,6 @@ namespace AutoTranslation
             {
                 callBack(result);
             }
-            
-            PerformanceMonitor.StopDefInjectionMonitoring();
         }
 
         public static void ForEachPossibleDefInjection(Type defType, Traverser action)
@@ -224,7 +227,6 @@ namespace AutoTranslation
             {
                 try
                 {
-                    PerformanceMonitor.RecordDefProcessed();
                     ForEachPossibleDefInjectionInDef(def, action);
                 }
                 catch (Exception ex)
@@ -261,7 +263,6 @@ namespace AutoTranslation
             {
                 if (blackListFields.Contains(field.Name) || BlacklistedFields.Contains(field.Name)) continue;
 
-                PerformanceMonitor.RecordFieldAccessed();
                 var nxt = ReflectionCache.GetValue(field, cur);
                 if (nxt is Def) continue;
 

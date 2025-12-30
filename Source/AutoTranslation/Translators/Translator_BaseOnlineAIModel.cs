@@ -90,7 +90,8 @@ namespace AutoTranslation.Translators
                 return false;
             }
 
-            const int maxRetries = 2;
+            // skipRetry가 true이면 재시도하지 않음 (maxRetries = 0)
+            var maxRetries = skipRetry ? 0 : 2;
             var retryCount = 0;
 
             while (retryCount <= maxRetries)

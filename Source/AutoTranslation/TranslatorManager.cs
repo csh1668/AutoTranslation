@@ -79,8 +79,8 @@ namespace AutoTranslation
             Log.Message(AutoTranslation.LogPrefix + $"List of translators: {translators.Select(x => x.Name).ToCommaList()}, Current translator: {CurrentTranslator?.Name}");
             Ready = CurrentTranslator != null;
 
-            // Load from new cache manager
-            TranslationCacheManager.Load(nameof(CachedTranslations));
+            // Load from new cache manager (V2 format)
+            TranslationCacheManager.Load("CachedTranslationsV2");
             foreach (var pair in TranslationCacheManager.GetAll())
             {
                 CachedTranslations[pair.Key] = pair.Value;
@@ -256,7 +256,7 @@ namespace AutoTranslation
 
                     if (TranslationCacheManager.IsDirty || _cacheCount != CachedTranslations.Count)
                     {
-                        TranslationCacheManager.Save(nameof(CachedTranslations));
+                        TranslationCacheManager.Save("CachedTranslationsV2");
                         
                         if (_cacheCount != CachedTranslations.Count)
                         {
