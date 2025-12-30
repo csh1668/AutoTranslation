@@ -11,7 +11,7 @@ namespace AutoTranslation.Translators
         public override string Name => "ChatGPT";
         public override string BaseURL => "https://api.openai.com/v1/";
 
-        protected virtual string RoleSystem => "developer";
+        protected virtual string RoleSystem => "system";
 
         public override List<string> GetModels()
         {
