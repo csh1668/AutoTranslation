@@ -40,12 +40,18 @@ namespace AutoTranslation.Translators
                 var (protectedText, placeholders) = text.ProtectPlaceholders();
                 
                 var url = Config.CustomUrl.TrimEnd('/') + "/translate";
+                
+                // Build JSON body - only include api_key if it's not empty
+                var apiKeyField = string.IsNullOrEmpty(Config.APIKey) 
+                    ? "" 
+                    : $@",
+                    ""api_key"": ""{Config.APIKey}""";
+                
                 var body = $@"{{
                     ""q"": ""{protectedText.EscapeJsonString()}"",
                     ""source"": ""auto"",
                     ""target"": ""{TranslateLanguage}"",
-                    ""format"": ""text"",
-                    ""api_key"": ""{Config.APIKey}""
+                    ""format"": ""text""{apiKeyField}
                 }}";
 
                 var headers = new Dictionary<string, string>();

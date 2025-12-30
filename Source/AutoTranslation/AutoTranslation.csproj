@@ -115,6 +115,7 @@
     <Compile Include="Translators\Translator_LibreTranslate.cs" />
     <Compile Include="Translators\Translator_OpenAICompatible.cs" />
     <Compile Include="Translators\Translator_Papago.cs" />
+    <Compile Include="Translators\Translator_Yandex.cs" />
     <Compile Include="Translators\Translator_BaseOnlineAIModel.cs" />
     <Compile Include="Translators\Translator_BaseTraditional.cs" />
   </ItemGroup>

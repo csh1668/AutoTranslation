@@ -19,17 +19,22 @@ namespace AutoTranslation
             {
                 var request = CreateRequest(url, "POST", headers);
                 
-                // Only set ContentType if not already set by headers
-                if (string.IsNullOrEmpty(request.ContentType))
+                // Only set ContentType if not already set by headers and contentType is not null
+                if (string.IsNullOrEmpty(request.ContentType) && !string.IsNullOrEmpty(contentType))
                 {
                     request.ContentType = contentType;
                 }
 
-                using (var stream = request.GetRequestStream())
-                using (var writer = new StreamWriter(stream, Encoding.UTF8))
+                // Only write body if it's not empty
+                if (!string.IsNullOrEmpty(body))
                 {
-                    writer.Write(body);
+                    using (var stream = request.GetRequestStream())
+                    using (var writer = new StreamWriter(stream, Encoding.UTF8))
+                    {
+                        writer.Write(body);
+                    }
                 }
+                // For empty body, don't call GetRequestStream() at all - let the framework handle it
 
                 return GetResponseText(request);
             }, maxRetries, url);
