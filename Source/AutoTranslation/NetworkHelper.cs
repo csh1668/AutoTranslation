@@ -29,10 +29,12 @@ namespace AutoTranslation
                 // Only write body if it's not empty
                 if (!string.IsNullOrEmpty(body))
                 {
+                    byte[] bodyBytes = Encoding.UTF8.GetBytes(body);
+                    request.ContentLength = bodyBytes.Length;
+                    
                     using (var stream = request.GetRequestStream())
-                    using (var writer = new StreamWriter(stream, Encoding.UTF8))
                     {
-                        writer.Write(body);
+                        stream.Write(bodyBytes, 0, bodyBytes.Length);
                     }
                 }
                 // For empty body, don't call GetRequestStream() at all - let the framework handle it

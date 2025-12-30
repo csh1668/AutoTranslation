@@ -52,6 +52,7 @@ namespace AutoTranslation.Translators
 
             var headers = new Dictionary<string, string>
             {
+                { "Content-Type", "application/json" },
                 { "Authorization", "Bearer " + APIKey }
             };
 
