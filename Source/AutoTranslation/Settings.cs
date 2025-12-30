@@ -18,7 +18,7 @@ namespace AutoTranslation
         public static bool AppendTranslationCompleteTag = false;
         public static string TranslatorName = "Google";
         public static bool ShowOriginal = false;
-        public static int MaxConcurrency = 1;
+        public static int MaxConcurrency = 5;
         public static bool EnableLanguageDetection = true; // 언어 감지 활성화 (기본값: true)
         public static HashSet<string> BlackListModPackageIds = new HashSet<string>();
 
@@ -28,6 +28,7 @@ namespace AutoTranslation
         // UI State
         private static SettingsTab _curTab = SettingsTab.General;
         private static Vector2 scrollbarVector = Vector2.zero;
+        private static Vector2 translatorTabScrollPosition = Vector2.zero;
         private static string TestText = "Hello, World!";
         private static string TestResultText = string.Empty;
         private static string SearchText = string.Empty;
@@ -68,7 +69,7 @@ namespace AutoTranslation
             Scribe_Values.Look(ref AppendTranslationCompleteTag, "AutoTranslation_AppendTranslationCompleteTag", false);
             Scribe_Values.Look(ref TranslatorName, "AutoTranslation_TranslatorName", "Google");
             Scribe_Values.Look(ref ShowOriginal, "AutoTranslation_ShowOriginal", false);
-            Scribe_Values.Look(ref MaxConcurrency, "AutoTranslation_MaxConcurrency", 1);
+            Scribe_Values.Look(ref MaxConcurrency, "AutoTranslation_MaxConcurrency", 5);
             Scribe_Values.Look(ref EnableLanguageDetection, "AutoTranslation_EnableLanguageDetection", true);
             Scribe_Collections.Look(ref BlackListModPackageIds, "AutoTranslation_WhiteListModPackageIds", LookMode.Value);
             
@@ -155,8 +156,21 @@ namespace AutoTranslation
 
         private void DoTranslatorTab(Rect inRect)
         {
+            // Estimate content height generously to ensure scrollability
+            float estimatedContentHeight = 800f; // Base height for typical settings
+            
+            // Add extra height for AI model settings with batch options
+            var targetTranslator = TranslatorManager.GetTranslator(TranslatorName);
+            if (targetTranslator is Translator_BaseOnlineAIModel)
+            {
+                estimatedContentHeight += 200f; // Extra space for batch settings
+            }
+            
+            var viewRect = new Rect(0f, 0f, inRect.width - 16f, estimatedContentHeight);
+            Widgets.BeginScrollView(inRect, ref translatorTabScrollPosition, viewRect);
+            
             var ls = new Listing_Standard();
-            ls.Begin(inRect);
+            ls.Begin(viewRect);
 
             ls.Label("AT_Setting_SelectEngine".Translate());
             if (Widgets.ButtonText(ls.GetRect(28f), TranslatorName))
@@ -180,7 +194,6 @@ namespace AutoTranslation
             }
             ls.Gap();
 
-            var targetTranslator = TranslatorManager.GetTranslator(TranslatorName);
             if (targetTranslator != null)
             {
                 ls.Label($"--- {targetTranslator.Name} Settings ---");
@@ -231,6 +244,7 @@ namespace AutoTranslation
             }
 
             ls.End();
+            Widgets.EndScrollView();
         }
 
         private void DoTargetModsTab(Rect inRect)
@@ -387,15 +401,15 @@ namespace AutoTranslation
             else 
                 status = "AT_Status3".Translate();
             ls.Label("AT_Setting_CurStatus".Translate() + status);
-            ls.Label("AT_Setting_Cached".Translate() + $"{TranslatorManager.CachedTranslations.Count}");
+            ls.Label("AT_Setting_Cached".Translate() + $"{TranslatorManager.CachedTranslationsV2.Count}");
             ls.Label("AT_Setting_NotYet".Translate() + $"{TranslatorManager._queue.Count}");
 
             if (ls.ButtonText("AT_Setting_ResetTranslationCache".Translate()))
             {
-                TranslatorManager.CachedTranslations.Clear();
+                TranslatorManager.CachedTranslationsV2.Clear();
                 TranslatorManager._cacheCount = 0;
                 TranslationCacheManager.Clear();
-                TranslationCacheManager.Save(nameof(TranslatorManager.CachedTranslations));
+                TranslationCacheManager.Save(nameof(TranslatorManager.CachedTranslationsV2));
                 Messages.Message("AT_Message_ResetTranslationCache".Translate(), MessageTypeDefOf.NeutralEvent);
             }
 
@@ -538,9 +552,9 @@ namespace AutoTranslation
         private static void RefreshEditorFilter()
         {
             // Sync TranslatorManager cache to TranslationCacheManager if needed
-            if (TranslatorManager.CachedTranslations != null && TranslatorManager.CachedTranslations.Count > 0)
+            if (TranslatorManager.CachedTranslationsV2 != null && TranslatorManager.CachedTranslationsV2.Count > 0)
             {
-                foreach (var pair in TranslatorManager.CachedTranslations)
+                foreach (var pair in TranslatorManager.CachedTranslationsV2)
                 {
                     if (!TranslationCacheManager.Instance.Cache.ContainsKey(pair.Key))
                     {
@@ -900,7 +914,7 @@ namespace AutoTranslation
                     
                     // Update file cache and in-memory cache
                     TranslationCacheManager.AddOrUpdate(entry.Key, newValue);
-                    TranslatorManager.CachedTranslations[entry.Key] = newValue;
+                    TranslatorManager.CachedTranslationsV2[entry.Key] = newValue;
                     
                     // Re-inject all translations to apply changes
                     InjectionManager.UndoInjectAll();
@@ -924,7 +938,7 @@ namespace AutoTranslation
             {
                 // Remove from file cache and in-memory cache
                 TranslationCacheManager.Remove(entry.Key);
-                TranslatorManager.CachedTranslations.TryRemove(entry.Key, out _);
+                TranslatorManager.CachedTranslationsV2.TryRemove(entry.Key, out _);
                 
                 // Re-inject all translations to apply changes
                 InjectionManager.UndoInjectAll();

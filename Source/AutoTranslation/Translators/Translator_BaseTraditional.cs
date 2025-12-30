@@ -28,6 +28,31 @@ namespace AutoTranslation.Translators
             return TryTranslate(text, out translated);
         }
 
+        // Traditional translators don't support batch translation
+        public virtual bool SupportsBatchTranslation => false;
+
+        // Fallback implementation: translate each item individually
+        public virtual bool TryTranslateBatch(List<string> texts, out List<string> translated)
+        {
+            translated = new List<string>();
+            bool allSuccess = true;
+
+            foreach (var text in texts)
+            {
+                if (TryTranslate(text, out var result))
+                {
+                    translated.Add(result);
+                }
+                else
+                {
+                    translated.Add(text);
+                    allSuccess = false;
+                }
+            }
+
+            return allSuccess;
+        }
+
         public abstract bool SupportsCurrentLanguage();
 
         public virtual void DrawSettings(Listing_Standard ls)

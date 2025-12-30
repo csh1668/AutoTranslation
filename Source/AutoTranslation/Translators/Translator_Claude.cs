@@ -39,12 +39,17 @@ namespace AutoTranslation.Translators
             }
         }
 
-        protected override string GetResponseUnsafe(string text)
+        protected override string GetResponseUnsafe(string text, string prompt)
         {
+            // Estimate if this is a batch request based on text length
+            // Batch requests need higher token limits
+            var isBatchRequest = text.Contains("<translations>") && text.Contains("</translations>");
+            var maxTokens = isBatchRequest ? 4096 : 1024;
+            
             var requestBody = $@"{{
                 ""model"": ""{Model}"",
-                ""max_tokens"": 1024,
-                ""system"": ""{Prompt.EscapeJsonString()}"",
+                ""max_tokens"": {maxTokens},
+                ""system"": ""{prompt.EscapeJsonString()}"",
                 ""messages"": [
                     {{
                         ""role"": ""user"",

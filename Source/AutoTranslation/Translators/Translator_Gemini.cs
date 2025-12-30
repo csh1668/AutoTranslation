@@ -30,16 +30,22 @@ namespace AutoTranslation.Translators
 
                 return models;
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                // Messages.Message("AT_Message_FailedToGetModels".Translate() + e.Message, MessageTypeDefOf.NegativeEvent);
+                // Silently return null, base class will handle logging
                 return null;
             }
         }
 
-        protected override string GetResponseUnsafe(string text)
+        protected override string GetResponseUnsafe(string text, string prompt)
         {
             var url = Helpers.CombineUrl(RequestURL, "models", $"{Model}:generateContent") + $"?key={APIKey}";
+            
+            // Estimate if this is a batch request based on text length
+            // Batch requests need higher token limits
+            var isBatchRequest = text.Contains("<translations>") && text.Contains("</translations>");
+            var maxOutputTokens = isBatchRequest ? 8192 : 2048;
+            
             var requestBody = $@"{{
 	            ""contents"": [
 		            {{
@@ -53,9 +59,13 @@ namespace AutoTranslation.Translators
 	            ""systemInstruction"": {{
 		            ""parts"": [
 			            {{
-				            ""text"": ""{Prompt.EscapeJsonString()}""
+				            ""text"": ""{prompt.EscapeJsonString()}""
 			            }}
 		            ]
+	            }},
+	            ""generationConfig"": {{
+		            ""maxOutputTokens"": {maxOutputTokens},
+		            ""temperature"": 0.3
 	            }}
             }}";
 

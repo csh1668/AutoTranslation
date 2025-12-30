@@ -23,7 +23,6 @@ namespace AutoTranslation
             if (_defInjectedMissingloaded) return;
 
             AutoTranslation.sw.Start();
-            PerformanceMonitor.StartDefInjectionMonitoring();
             Log.Message(AutoTranslation.LogPrefix + "finding untranslated DefInjected...");
 
             CompatibilityPatches.ApplyPatches();
@@ -32,7 +31,6 @@ namespace AutoTranslation
             InjectionManager.InjectMissingDefInjection();
 
             Log.Message(AutoTranslation.LogPrefix + "finding untranslated DefInjected done!");
-            PerformanceMonitor.StopDefInjectionMonitoring();
 
             AutoTranslation.sw.Stop();
         }

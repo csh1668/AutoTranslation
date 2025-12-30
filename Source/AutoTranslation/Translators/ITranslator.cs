@@ -20,6 +20,10 @@ namespace AutoTranslation.Translators
         bool TryTranslate(string text, out string translated);
         bool TryTranslate(string text, out string translated, bool skipRetry);
 
+        // Batch translation support
+        bool SupportsBatchTranslation { get; }
+        bool TryTranslateBatch(List<string> texts, out List<string> translated);
+
         void DrawSettings(Listing_Standard ls);
     }
 }

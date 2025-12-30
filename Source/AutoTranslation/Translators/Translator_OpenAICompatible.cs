@@ -55,7 +55,7 @@ namespace AutoTranslation.Translators
             Ready = true;
         }
 
-        protected override string GetResponseUnsafe(string text)
+        protected override string GetResponseUnsafe(string text, string prompt)
         {
             var url = Helpers.CombineUrl(RequestURL, "chat", "completions");
             
@@ -65,7 +65,7 @@ namespace AutoTranslation.Translators
                 ""messages"": [
                   {{
                     ""role"": ""system"",
-                    ""content"": ""{Prompt.EscapeJsonString()}""
+                    ""content"": ""{prompt.EscapeJsonString()}""
                   }},
                   {{
                     ""role"": ""user"",

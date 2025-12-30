@@ -200,7 +200,7 @@ namespace AutoTranslation
                                     $"Formating failed: {key}:{value} => {t}, {placeHolders.Count}, reason {e.Message}",
                                     value.GetHashCode());
                                 @params.translatedCollection.TryAdd(original, original);
-                                TranslatorManager.CachedTranslations.TryRemove(value, out _);
+                                TranslatorManager.CachedTranslationsV2.TryRemove(value, out _);
                             }
 
                             @params.InjectTranslation();
@@ -347,7 +347,7 @@ namespace AutoTranslation
         {
             // Try to find in ReverseTranslator to get original text
             string currentTranslation;
-            TranslatorManager.CachedTranslations.TryGetValue(cacheKey, out currentTranslation);
+            TranslatorManager.CachedTranslationsV2.TryGetValue(cacheKey, out currentTranslation);
             var originalText = ReverseTranslator.FirstOrDefault(x => x.Key == currentTranslation).Value;
             
             if (string.IsNullOrEmpty(originalText))
@@ -415,7 +415,7 @@ namespace AutoTranslation
         {
             // Try to find in ReverseTranslator to get original text
             string currentTranslation;
-            TranslatorManager.CachedTranslations.TryGetValue(cacheKey, out currentTranslation);
+            TranslatorManager.CachedTranslationsV2.TryGetValue(cacheKey, out currentTranslation);
             var originalText = ReverseTranslator.FirstOrDefault(x => x.Key == currentTranslation).Value;
             
             if (string.IsNullOrEmpty(originalText))
@@ -526,22 +526,22 @@ namespace AutoTranslation
 
             // 캐시에서 해당 모드와 관련된 항목 제거
             string modPrefix = $"{mod.PackageId}:";
-            var keysToRemove = TranslatorManager.CachedTranslations.Keys
+            var keysToRemove = TranslatorManager.CachedTranslationsV2.Keys
                 .Where(k => k.StartsWith(modPrefix))
                 .ToList();
 
             foreach (var key in keysToRemove)
             {
-                if (TranslatorManager.CachedTranslations.TryRemove(key, out _))
+                if (TranslatorManager.CachedTranslationsV2.TryRemove(key, out _))
                     TranslatorManager._cacheCount--;
             }
 
             // 캐시 저장
-            foreach (var pair in TranslatorManager.CachedTranslations)
+            foreach (var pair in TranslatorManager.CachedTranslationsV2)
             {
                 TranslationCacheManager.AddOrUpdate(pair.Key, pair.Value);
             }
-            TranslationCacheManager.Save(nameof(TranslatorManager.CachedTranslations));
+            TranslationCacheManager.Save(nameof(TranslatorManager.CachedTranslationsV2));
 
             // 모드 번역 다시 주입
             InjectMissingDefInjection(mod);

@@ -92,7 +92,6 @@
     <Compile Include="LanguageDetector.cs" />
     <Compile Include="MigrationHelper.cs" />
     <Compile Include="NetworkHelper.cs" />
-    <Compile Include="PerformanceMonitor.cs" />
     <Compile Include="ReflectionCache.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="Patches.cs" />

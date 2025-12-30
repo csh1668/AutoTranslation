@@ -19,7 +19,7 @@ namespace AutoTranslation
             if (ModsConfig.IsActive("community.psychology.unofficialupdate") &&
                 LanguageDatabase.activeLanguage?.LegacyFolderName.Contains("Spanish") == true)
             {
-                TranslatorManager.CachedTranslations["optimistic10"] = "positividad";
+                TranslatorManager.CachedTranslationsV2["optimistic10"] = "positividad";
             }
         }
     }

@@ -34,14 +34,14 @@ namespace AutoTranslation.Translators
             }
         }
 
-        protected override string GetResponseUnsafe(string text)
+        protected override string GetResponseUnsafe(string text, string prompt)
         {
             var requestBody = $@"{{
                 ""model"": ""{Model}"",
                 ""messages"": [
                   {{
                     ""role"": ""{RoleSystem}"",
-                    ""content"": ""{Prompt.EscapeJsonString()}""
+                    ""content"": ""{prompt.EscapeJsonString()}""
                   }},
                   {{
                     ""role"": ""user"",

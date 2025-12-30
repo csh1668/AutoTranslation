@@ -17,7 +17,7 @@ namespace AutoTranslation
 {
     public static class TranslatorManager
     {
-        public static readonly ConcurrentDictionary<string, string> CachedTranslations = new ConcurrentDictionary<string, string>();
+        public static readonly ConcurrentDictionary<string, string> CachedTranslationsV2 = new ConcurrentDictionary<string, string>();
         public static ITranslator CurrentTranslator;
         public static bool Ready;
         public static bool Working;
@@ -79,14 +79,13 @@ namespace AutoTranslation
             Log.Message(AutoTranslation.LogPrefix + $"List of translators: {translators.Select(x => x.Name).ToCommaList()}, Current translator: {CurrentTranslator?.Name}");
             Ready = CurrentTranslator != null;
 
-            // Load from new cache manager (V2 format)
-            TranslationCacheManager.Load("CachedTranslationsV2");
+            TranslationCacheManager.Load(nameof(CachedTranslationsV2));
             foreach (var pair in TranslationCacheManager.GetAll())
             {
-                CachedTranslations[pair.Key] = pair.Value;
+                CachedTranslationsV2[pair.Key] = pair.Value;
             }
 
-            _cacheCount = CachedTranslations.Count;
+            _cacheCount = CachedTranslationsV2.Count;
 
         }
 
@@ -151,86 +150,70 @@ namespace AutoTranslation
                     
                     if (_queue.Count > 0)
                     {
-                        await _concurrencyLimiter.WaitAsync();
+                        // Check if batch translation is supported and enabled
+                        var aiConfig = CurrentTranslator?.Settings as TranslatorSettings_AIModel;
+                        bool useBatch = CurrentTranslator?.SupportsBatchTranslation == true && 
+                                       aiConfig?.EnableBatchTranslation == true &&
+                                       _queue.Count > 1; // Only batch if multiple items
                         
-                        if (_queue.TryDequeue(out var pair))
+                        if (useBatch)
                         {
-                            _inQueue.TryRemove(pair.Key, out _);
-                            
-                            _ = Task.Run(() =>
-                            {
-                                try
-                                {
-                                    var translated = string.Empty;
-                                    var success = true;
-                                    
-                                    // Batch/Tokenize logic
-                                    if (pair.Key.Length > 200)
-                                    {
-                                        translated = pair.Key.Tokenize().Aggregate(translated, (current, token) =>
-                                        {
-                                            success &= CurrentTranslator.TryTranslate(token, out var tmp);
-                                            return current + ' ' + tmp;
-                                        });
-                                    }
-                                    else
-                                    {
-                                        success = CurrentTranslator.TryTranslate(pair.Key, out translated);
-                                    }
-
-                                    if (success)
-                                    {
-                                        translated = PolishText(translated);
-                                        // Success - clear retry count
-                                        _retryCount.TryRemove(pair.Key, out _);
-                                    }
-                                    Interlocked.Increment(ref workCnt);
-                                    pair.Value(translated, success);
-                                }
-                                catch (Exception ex)
-                                {
-                                    // Check if this is a network timeout/error that we can retry
-                                    bool shouldRetry = ex is WebException webEx && 
-                                        (webEx.Status == WebExceptionStatus.Timeout || 
-                                         webEx.Status == WebExceptionStatus.ConnectionClosed ||
-                                         webEx.Status == WebExceptionStatus.ReceiveFailure);
-                                    
-                                    if (shouldRetry)
-                                    {
-                                        var currentRetries = _retryCount.AddOrUpdate(pair.Key, 1, (k, v) => v + 1);
-                                        
-                                        if (currentRetries <= MAX_RETRIES)
-                                        {
-                                            // Re-add to queue for retry
-                                            Log.Warning($"{AutoTranslation.LogPrefix} Translation failed (timeout/network error), adding back to queue (retry {currentRetries}/{MAX_RETRIES}): {pair.Key.Substring(0, Math.Min(50, pair.Key.Length))}...");
-                                            _queue.Enqueue(pair);
-                                            _inQueue.TryAdd(pair.Key, 0);
-                                        }
-                                        else
-                                        {
-                                            // Max retries exceeded
-                                            Log.Error($"{AutoTranslation.LogPrefix} Translation failed after {MAX_RETRIES} retries: {ex.Message}");
-                                            _retryCount.TryRemove(pair.Key, out _);
-                                            pair.Value(pair.Key, false);
-                                        }
-                                    }
-                                    else
-                                    {
-                                        // Non-retryable error
-                                        Log.Error($"{AutoTranslation.LogPrefix} Translation failed with non-retryable error: {ex.Message}");
-                                        _retryCount.TryRemove(pair.Key, out _);
-                                        pair.Value(pair.Key, false);
-                                    }
-                                }
-                                finally
-                                {
-                                    _concurrencyLimiter.Release();
-                                }
-                            });
+                            // Batch translation mode
+                            await ProcessBatchTranslation(aiConfig.BatchSizeTokens);
                         }
                         else
                         {
-                            _concurrencyLimiter.Release();
+                            // Individual translation mode (original logic)
+                            await _concurrencyLimiter.WaitAsync();
+                            
+                            if (_queue.TryDequeue(out var pair))
+                            {
+                                _inQueue.TryRemove(pair.Key, out _);
+                                
+                                _ = Task.Run(() =>
+                                {
+                                    try
+                                    {
+                                        var translated = string.Empty;
+                                        var success = true;
+                                        
+                                        // Batch/Tokenize logic
+                                        if (pair.Key.Length > 200)
+                                        {
+                                            translated = pair.Key.Tokenize().Aggregate(translated, (current, token) =>
+                                            {
+                                                success &= CurrentTranslator.TryTranslate(token, out var tmp);
+                                                return current + ' ' + tmp;
+                                            });
+                                        }
+                                        else
+                                        {
+                                            success = CurrentTranslator.TryTranslate(pair.Key, out translated);
+                                        }
+
+                                        if (success)
+                                        {
+                                            translated = PolishText(translated);
+                                            // Success - clear retry count
+                                            _retryCount.TryRemove(pair.Key, out _);
+                                        }
+                                        Interlocked.Increment(ref workCnt);
+                                        pair.Value(translated, success);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        HandleTranslationError(pair, ex);
+                                    }
+                                    finally
+                                    {
+                                        _concurrencyLimiter.Release();
+                                    }
+                                });
+                            }
+                            else
+                            {
+                                _concurrencyLimiter.Release();
+                            }
                         }
                     }
                     else
@@ -249,20 +232,20 @@ namespace AutoTranslation
                 try
                 {
                     // Sync local cache to manager
-                    foreach (var pair in CachedTranslations)
+                    foreach (var pair in CachedTranslationsV2)
                     {
                         TranslationCacheManager.AddOrUpdate(pair.Key, pair.Value);
                     }
 
-                    if (TranslationCacheManager.IsDirty || _cacheCount != CachedTranslations.Count)
+                    if (TranslationCacheManager.IsDirty || _cacheCount != CachedTranslationsV2.Count)
                     {
-                        TranslationCacheManager.Save("CachedTranslationsV2");
+                        TranslationCacheManager.Save(nameof(CachedTranslationsV2));
                         
-                        if (_cacheCount != CachedTranslations.Count)
+                        if (_cacheCount != CachedTranslationsV2.Count)
                         {
                             Log.Message(AutoTranslation.LogPrefix +
-                                        $"Translation cache saved to your disk. translated: {CachedTranslations.Count}");
-                            _cacheCount = CachedTranslations.Count;
+                                        $"Translation cache saved to your disk. translated: {CachedTranslationsV2.Count}");
+                            _cacheCount = CachedTranslationsV2.Count;
                         }
                     }
                 }
@@ -291,7 +274,7 @@ namespace AutoTranslation
             var key = keyPrefix + normalizedText;
             
             // Check cache first (local dict is synced on load)
-            if (CachedTranslations.TryGetValue(key, out var translation))
+            if (CachedTranslationsV2.TryGetValue(key, out var translation))
             {
                 callBack(Prefs.DevMode && Settings.AppendTranslationCompleteTag && orig != translation ? "::TEST::" + translation : translation);
                 return;
@@ -299,7 +282,7 @@ namespace AutoTranslation
             
             // Backward compatibility: check for old cache entries without ModId
             // If found, return original text to trigger re-translation with proper ModId
-            if (!string.IsNullOrEmpty(keyPrefix) && CachedTranslations.ContainsKey(normalizedText))
+            if (!string.IsNullOrEmpty(keyPrefix) && CachedTranslationsV2.ContainsKey(normalizedText))
             {
                 // Old entry exists - will be cleaned up on next save
                 // Don't use it, let it re-translate with ModId
@@ -318,7 +301,7 @@ namespace AutoTranslation
             {
                 if (s)
                 {
-                    CachedTranslations[key] = t;
+                    CachedTranslationsV2[key] = t;
                     // Also update manager immediately? Or wait for timer?
                     // Timer syncs every minute, might be safer to update immediately for robustness
                     TranslationCacheManager.AddOrUpdate(key, t);
@@ -330,6 +313,173 @@ namespace AutoTranslation
         public static ITranslator GetTranslator(string name)
         {
             return translators.FirstOrDefault(x => x.Name == name);
+        }
+
+        private static async Task ProcessBatchTranslation(int targetTokens)
+        {
+            await _concurrencyLimiter.WaitAsync();
+            
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    // Collect items for batch
+                    var batchItems = new List<KeyValuePair<string, Action<string, bool>>>();
+                    int estimatedTokens = 0;
+                    var startTime = DateTime.UtcNow;
+                    
+                    // Collect items up to target tokens or timeout
+                    while (estimatedTokens < targetTokens && 
+                           (DateTime.UtcNow - startTime).TotalMilliseconds < 500 &&
+                           batchItems.Count < 100) // Max 100 items per batch for safety
+                    {
+                        if (_queue.TryDequeue(out var item))
+                        {
+                            batchItems.Add(item);
+                            _inQueue.TryRemove(item.Key, out _);
+                            
+                            // Estimate tokens (rough: 1 token ≈ 4 characters for English)
+                            estimatedTokens += item.Key.Length / 4;
+                        }
+                        else
+                        {
+                            // Queue empty, wait a bit for more items
+                            if (batchItems.Count == 0)
+                            {
+                                break; // Nothing to process
+                            }
+                            Thread.Sleep(50);
+                        }
+                    }
+                    
+                    if (batchItems.Count == 0)
+                    {
+                        return; // Nothing collected
+                    }
+                    
+                    // If only one item, use individual translation
+                    if (batchItems.Count == 1)
+                    {
+                        var singleItem = batchItems[0];
+                        ProcessIndividualTranslation(singleItem);
+                        return;
+                    }
+                    
+                    // Prepare batch
+                    var texts = batchItems.Select(x => x.Key).ToList();
+                    var callbacks = batchItems.Select(x => x.Value).ToList();
+                    
+                    // Execute batch translation
+                    bool success = CurrentTranslator.TryTranslateBatch(texts, out var translatedTexts);
+                    
+                    if (success && translatedTexts != null && translatedTexts.Count == texts.Count)
+                    {
+                        // Batch succeeded - process results
+                        for (int i = 0; i < texts.Count; i++)
+                        {
+                            var translated = PolishText(translatedTexts[i]);
+                            _retryCount.TryRemove(texts[i], out _);
+                            Interlocked.Increment(ref workCnt);
+                            callbacks[i](translated, true);
+                        }
+                        
+                        Log.Message(AutoTranslation.LogPrefix + 
+                            $"Batch translation completed: {texts.Count} items in one request");
+                    }
+                    else
+                    {
+                        // Batch failed - retry individually
+                        Log.Warning(AutoTranslation.LogPrefix + 
+                            $"Batch translation failed, retrying {batchItems.Count} items individually");
+                        
+                        foreach (var item in batchItems)
+                        {
+                            // Re-add to queue for individual processing
+                            _queue.Enqueue(item);
+                            _inQueue.TryAdd(item.Key, 0);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error($"{AutoTranslation.LogPrefix} Batch translation error: {ex.Message}");
+                }
+                finally
+                {
+                    _concurrencyLimiter.Release();
+                }
+            });
+        }
+        
+        private static void ProcessIndividualTranslation(KeyValuePair<string, Action<string, bool>> pair)
+        {
+            try
+            {
+                var translated = string.Empty;
+                var success = true;
+                
+                // Batch/Tokenize logic for long text
+                if (pair.Key.Length > 200)
+                {
+                    translated = pair.Key.Tokenize().Aggregate(translated, (current, token) =>
+                    {
+                        success &= CurrentTranslator.TryTranslate(token, out var tmp);
+                        return current + ' ' + tmp;
+                    });
+                }
+                else
+                {
+                    success = CurrentTranslator.TryTranslate(pair.Key, out translated);
+                }
+
+                if (success)
+                {
+                    translated = PolishText(translated);
+                    _retryCount.TryRemove(pair.Key, out _);
+                }
+                Interlocked.Increment(ref workCnt);
+                pair.Value(translated, success);
+            }
+            catch (Exception ex)
+            {
+                HandleTranslationError(pair, ex);
+            }
+        }
+        
+        private static void HandleTranslationError(KeyValuePair<string, Action<string, bool>> pair, Exception ex)
+        {
+            // Check if this is a network timeout/error that we can retry
+            bool shouldRetry = ex is WebException webEx && 
+                (webEx.Status == WebExceptionStatus.Timeout || 
+                 webEx.Status == WebExceptionStatus.ConnectionClosed ||
+                 webEx.Status == WebExceptionStatus.ReceiveFailure);
+            
+            if (shouldRetry)
+            {
+                var currentRetries = _retryCount.AddOrUpdate(pair.Key, 1, (k, v) => v + 1);
+                
+                if (currentRetries <= MAX_RETRIES)
+                {
+                    // Re-add to queue for retry
+                    Log.Warning($"{AutoTranslation.LogPrefix} Translation failed (timeout/network error), adding back to queue (retry {currentRetries}/{MAX_RETRIES}): {pair.Key.Substring(0, Math.Min(50, pair.Key.Length))}...");
+                    _queue.Enqueue(pair);
+                    _inQueue.TryAdd(pair.Key, 0);
+                }
+                else
+                {
+                    // Max retries exceeded
+                    Log.Error($"{AutoTranslation.LogPrefix} Translation failed after {MAX_RETRIES} retries: {ex.Message}");
+                    _retryCount.TryRemove(pair.Key, out _);
+                    pair.Value(pair.Key, false);
+                }
+            }
+            else
+            {
+                // Non-retryable error
+                Log.Error($"{AutoTranslation.LogPrefix} Translation failed with non-retryable error: {ex.Message}");
+                _retryCount.TryRemove(pair.Key, out _);
+                pair.Value(pair.Key, false);
+            }
         }
 
         public static void ClearQueue()

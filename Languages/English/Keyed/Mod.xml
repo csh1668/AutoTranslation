@@ -59,12 +59,16 @@
     <!-- Tab Names -->
     <AT_Tab_General>General</AT_Tab_General>
     <AT_Tab_Translator>Translator</AT_Tab_Translator>
-    <AT_Tab_TargetMods>Target Mods</AT_Tab_TargetMods>
+    <AT_Tab_TargetMods>Target Mods (Legacy)</AT_Tab_TargetMods>
     <AT_Tab_TranslationEditor>Translation Editor</AT_Tab_TranslationEditor>
     <AT_Tab_Advanced>Advanced</AT_Tab_Advanced>
     
     <!-- Advanced Settings -->
     <AT_Setting_MaxConcurrency>Maximum concurrent translations</AT_Setting_MaxConcurrency>
+    <AT_Setting_EnableBatchTranslation>Enable Batch Translation</AT_Setting_EnableBatchTranslation>
+    <AT_Setting_EnableBatchTranslation_Tooltip>Translate multiple texts in a single API call for better performance. Only available for AI model translators (GPT, Gemini, Claude, etc.). Can improve translation speed by 5-10x.</AT_Setting_EnableBatchTranslation_Tooltip>
+    <AT_Setting_BatchSize>Batch Size (tokens)</AT_Setting_BatchSize>
+    <AT_Setting_BatchSize_Tooltip>Number of tokens to collect before sending a batch request. Higher values = fewer API calls but slower individual responses. Recommended: 1500-3000.</AT_Setting_BatchSize_Tooltip>
     <AT_Setting_TranslationEditor>Translation Data Editor</AT_Setting_TranslationEditor>
     <AT_Setting_Editor_Search>Search...</AT_Setting_Editor_Search>
     <AT_Setting_Editor_Edit>Edit</AT_Setting_Editor_Edit>
