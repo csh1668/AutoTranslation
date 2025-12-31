@@ -39,24 +39,6 @@ namespace AutoTranslation
             Hebrew,
             Greek,
             Vietnamese,
-            Turkish,
-            Polish,
-            Czech,
-            German,
-            French,
-            Italian,
-            Spanish,
-            Portuguese,
-            Dutch,
-            Swedish,
-            Norwegian,
-            Danish,
-            Finnish,
-            Romanian,
-            Hungarian,
-            Catalan,
-            Slovak,
-            Estonian,
             Mixed,
             Latin  // Generic Latin-based language
         }
@@ -126,9 +108,12 @@ namespace AutoTranslation
             if (cyrillicRatio >= threshold)
                 return DetectedLanguage.Russian; // 기본 러시아어, 우크라이나어 구분은 어려움
 
-            // Latin 계열 언어는 일단 Latin으로 반환 (세부 구분은 어려움)
+            // Latin 계열 언어 (English 포함)
             if (latinRatio >= threshold)
-                return DetectedLanguage.Latin;
+            {
+                // 세부 구분 없이 English로 통일하거나 Latin으로 반환
+                return DetectedLanguage.English;
+            }
 
             // 여러 언어가 섞여 있거나 판단 불가
             return latinRatio > 0.1 ? DetectedLanguage.English : DetectedLanguage.Unknown;
@@ -140,7 +125,7 @@ namespace AutoTranslation
         public static bool IsEnglish(string text)
         {
             var detected = Detect(text);
-            return detected == DetectedLanguage.English || detected == DetectedLanguage.Unknown;
+            return detected == DetectedLanguage.English || detected == DetectedLanguage.Unknown || detected == DetectedLanguage.Latin;
         }
 
         /// <summary>
@@ -177,46 +162,10 @@ namespace AutoTranslation
                 return detected == DetectedLanguage.Greek;
             if (lowerCode.Contains("vietnamese") || lowerCode.Contains("tiếng việt"))
                 return detected == DetectedLanguage.Vietnamese;
-            if (lowerCode.Contains("turkish") || lowerCode.Contains("türkçe"))
-                return detected == DetectedLanguage.Turkish || detected == DetectedLanguage.Latin;
-            if (lowerCode.Contains("polish") || lowerCode.Contains("polski"))
-                return detected == DetectedLanguage.Polish || detected == DetectedLanguage.Latin;
-            if (lowerCode.Contains("czech") || lowerCode.Contains("čeština"))
-                return detected == DetectedLanguage.Czech || detected == DetectedLanguage.Latin;
-            if (lowerCode.Contains("german") || lowerCode.Contains("deutsch"))
-                return detected == DetectedLanguage.German || detected == DetectedLanguage.Latin;
-            if (lowerCode.Contains("french") || lowerCode.Contains("français"))
-                return detected == DetectedLanguage.French || detected == DetectedLanguage.Latin;
-            if (lowerCode.Contains("italian") || lowerCode.Contains("italiano"))
-                return detected == DetectedLanguage.Italian || detected == DetectedLanguage.Latin;
-            if (lowerCode.Contains("spanish") || lowerCode.Contains("español"))
-                return detected == DetectedLanguage.Spanish || detected == DetectedLanguage.Latin;
-            if (lowerCode.Contains("portuguese") || lowerCode.Contains("português"))
-                return detected == DetectedLanguage.Portuguese || detected == DetectedLanguage.Latin;
-            if (lowerCode.Contains("dutch") || lowerCode.Contains("nederlands"))
-                return detected == DetectedLanguage.Dutch || detected == DetectedLanguage.Latin;
-            if (lowerCode.Contains("swedish") || lowerCode.Contains("svenska"))
-                return detected == DetectedLanguage.Swedish || detected == DetectedLanguage.Latin;
-            if (lowerCode.Contains("norwegian") || lowerCode.Contains("norsk"))
-                return detected == DetectedLanguage.Norwegian || detected == DetectedLanguage.Latin;
-            if (lowerCode.Contains("danish") || lowerCode.Contains("dansk"))
-                return detected == DetectedLanguage.Danish || detected == DetectedLanguage.Latin;
-            if (lowerCode.Contains("finnish") || lowerCode.Contains("suomi"))
-                return detected == DetectedLanguage.Finnish || detected == DetectedLanguage.Latin;
-            if (lowerCode.Contains("romanian") || lowerCode.Contains("română"))
-                return detected == DetectedLanguage.Romanian || detected == DetectedLanguage.Latin;
-            if (lowerCode.Contains("hungarian") || lowerCode.Contains("magyar"))
-                return detected == DetectedLanguage.Hungarian || detected == DetectedLanguage.Latin;
-            if (lowerCode.Contains("catalan") || lowerCode.Contains("català"))
-                return detected == DetectedLanguage.Catalan || detected == DetectedLanguage.Latin;
-            if (lowerCode.Contains("slovak") || lowerCode.Contains("slovenčina"))
-                return detected == DetectedLanguage.Slovak || detected == DetectedLanguage.Latin;
-            if (lowerCode.Contains("estonian") || lowerCode.Contains("eesti"))
-                return detected == DetectedLanguage.Estonian || detected == DetectedLanguage.Latin;
             
-            // Latin 계열 언어는 English로 간주
-            if (detected == DetectedLanguage.Latin || detected == DetectedLanguage.English)
-                return lowerCode.Contains("english") || lowerCode == "en";
+            // 영어 확인
+            if (lowerCode.Contains("english") || lowerCode == "en")
+                return detected == DetectedLanguage.English || detected == DetectedLanguage.Latin;
             
             return false;
         }
@@ -239,10 +188,37 @@ namespace AutoTranslation
             if (activeLanguage == LanguageDatabase.defaultLanguage)
                 return false;
 
-            // 목표 언어 폴더 이름으로 언어 확인
+            // 목표 언어 폴더 이름
             var targetLanguageFolderName = activeLanguage.folderName;
             
-            return IsLanguage(text, targetLanguageFolderName);
+            // 라틴 문자권 언어(영어, 독일어, 프랑스어 등)끼리는 문자 체계가 동일하여 
+            // 텍스트 분석만으로 언어를 명확히 구분하기 어렵습니다. (오탐 가능성 높음)
+            // 따라서 언어 체계가 완전히 다른 경우(영어 <-> 한국어/중국어 등)에만
+            // 중복 번역 방지 기능을 활성화합니다.
+            if (IsNonLatinScriptLanguage(targetLanguageFolderName))
+            {
+                return IsLanguage(text, targetLanguageFolderName);
+            }
+
+            // 라틴 문자권 언어는 오탐 방지를 위해 감지 기능을 끄고 항상 번역을 시도합니다.
+            return false;
+        }
+
+        /// <summary>
+        /// 해당 언어가 비라틴 문자(한글, 한자, 키릴 문자 등)를 주로 사용하는지 확인합니다.
+        /// </summary>
+        private static bool IsNonLatinScriptLanguage(string languageFolderName)
+        {
+             var lower = languageFolderName.ToLower();
+             return lower.Contains("korean") || lower.Contains("한국어") ||
+                    lower.Contains("japanese") || lower.Contains("日本語") ||
+                    lower.Contains("chinese") || lower.Contains("简体") || lower.Contains("繁體") ||
+                    lower.Contains("russian") || lower.Contains("русский") ||
+                    lower.Contains("ukrainian") || lower.Contains("українська") || // Cyrillic
+                    lower.Contains("arabic") || 
+                    lower.Contains("thai") || 
+                    lower.Contains("hebrew") || 
+                    lower.Contains("greek");
         }
 
         /// <summary>
@@ -274,42 +250,6 @@ namespace AutoTranslation
                     return ("GR", "Ελληνικά (Greek)", new UnityEngine.Color(0.3f, 0.5f, 0.9f, 0.3f));
                 case DetectedLanguage.Vietnamese:
                     return ("VI", "Tiếng Việt (Vietnamese)", new UnityEngine.Color(0.9f, 0.5f, 0.3f, 0.3f));
-                case DetectedLanguage.Turkish:
-                    return ("TR", "Türkçe (Turkish)", new UnityEngine.Color(0.8f, 0.3f, 0.3f, 0.3f));
-                case DetectedLanguage.Polish:
-                    return ("PL", "Polski (Polish)", new UnityEngine.Color(0.9f, 0.1f, 0.3f, 0.3f));
-                case DetectedLanguage.Czech:
-                    return ("CZ", "Čeština (Czech)", new UnityEngine.Color(0.2f, 0.4f, 0.8f, 0.3f));
-                case DetectedLanguage.German:
-                    return ("DE", "Deutsch (German)", new UnityEngine.Color(0.9f, 0.7f, 0.1f, 0.3f));
-                case DetectedLanguage.French:
-                    return ("FR", "Français (French)", new UnityEngine.Color(0.2f, 0.3f, 0.9f, 0.3f));
-                case DetectedLanguage.Italian:
-                    return ("IT", "Italiano (Italian)", new UnityEngine.Color(0.1f, 0.7f, 0.3f, 0.3f));
-                case DetectedLanguage.Spanish:
-                    return ("ES", "Español (Spanish)", new UnityEngine.Color(0.9f, 0.5f, 0.1f, 0.3f));
-                case DetectedLanguage.Portuguese:
-                    return ("PT", "Português (Portuguese)", new UnityEngine.Color(0.1f, 0.6f, 0.3f, 0.3f));
-                case DetectedLanguage.Dutch:
-                    return ("NL", "Nederlands (Dutch)", new UnityEngine.Color(0.9f, 0.4f, 0.1f, 0.3f));
-                case DetectedLanguage.Swedish:
-                    return ("SV", "Svenska (Swedish)", new UnityEngine.Color(0.3f, 0.6f, 0.9f, 0.3f));
-                case DetectedLanguage.Norwegian:
-                    return ("NO", "Norsk (Norwegian)", new UnityEngine.Color(0.2f, 0.5f, 0.8f, 0.3f));
-                case DetectedLanguage.Danish:
-                    return ("DA", "Dansk (Danish)", new UnityEngine.Color(0.8f, 0.2f, 0.2f, 0.3f));
-                case DetectedLanguage.Finnish:
-                    return ("FI", "Suomi (Finnish)", new UnityEngine.Color(0.3f, 0.5f, 0.9f, 0.3f));
-                case DetectedLanguage.Romanian:
-                    return ("RO", "Română (Romanian)", new UnityEngine.Color(0.8f, 0.5f, 0.2f, 0.3f));
-                case DetectedLanguage.Hungarian:
-                    return ("HU", "Magyar (Hungarian)", new UnityEngine.Color(0.5f, 0.8f, 0.3f, 0.3f));
-                case DetectedLanguage.Catalan:
-                    return ("CA", "Català (Catalan)", new UnityEngine.Color(0.9f, 0.6f, 0.2f, 0.3f));
-                case DetectedLanguage.Slovak:
-                    return ("SK", "Slovenčina (Slovak)", new UnityEngine.Color(0.3f, 0.4f, 0.8f, 0.3f));
-                case DetectedLanguage.Estonian:
-                    return ("ET", "Eesti (Estonian)", new UnityEngine.Color(0.2f, 0.6f, 0.8f, 0.3f));
                 case DetectedLanguage.English:
                     return ("EN", "English", new UnityEngine.Color(0.3f, 0.8f, 0.3f, 0.3f));
                 case DetectedLanguage.Latin:
@@ -366,4 +306,3 @@ namespace AutoTranslation
         }
     }
 }
-

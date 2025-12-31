@@ -20,7 +20,7 @@ namespace AutoTranslation
         public static bool IsDirty { get; private set; }
         
         // ModId가 없는 레거시 엔트리에 부여할 기본 ModId
-        private const string LEGACY_MOD_ID = "unknown.mod";
+        public static readonly string LEGACY_MOD_ID = "unknown.mod";
         public string CacheDirectory
         {
             get

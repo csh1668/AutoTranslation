@@ -269,7 +269,7 @@ namespace AutoTranslation
             }
             
             // Include ModPackageId in the key for proper grouping
-            var keyPrefix = string.IsNullOrEmpty(modPackageId) ? "" : $"{modPackageId}:";
+            var keyPrefix = string.IsNullOrEmpty(modPackageId) ? $"{TranslationCacheManager.LEGACY_MOD_ID}:" : $"{modPackageId}:";
             var normalizedText = NormalizeKey(orig + additionalKey);
             var key = keyPrefix + normalizedText;
             
