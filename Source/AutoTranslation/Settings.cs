@@ -36,8 +36,9 @@ namespace AutoTranslation
         // Translation Editor State
         private static string _editorSearchQuery = "";
         private static Vector2 _editorScrollPosition;
-        private static List<KeyValuePair<string, string>> _editorFilteredCache;
         private static Dictionary<string, Dictionary<string, List<KeyValuePair<string, string>>>> _editorGroupedCache;
+        private static Dictionary<string, Dictionary<string, List<KeyValuePair<string, string>>>> _editorFilteredGroupCache;
+        private static Dictionary<string, string> _editorModNameCache = new Dictionary<string, string>();
         private static HashSet<string> _editorExpandedGroups = new HashSet<string>();
         private static HashSet<string> _editorExpandedSubGroups = new HashSet<string>();
         private static string _editingKey = null;
@@ -504,7 +505,8 @@ namespace AutoTranslation
             if (newQuery != _editorSearchQuery)
             {
                 _editorSearchQuery = newQuery;
-                RefreshEditorFilter();
+                // Mark filtered cache as needing refresh
+                _editorFilteredGroupCache = null;
             }
 
             // Refresh button (smaller width)
@@ -547,11 +549,19 @@ namespace AutoTranslation
                 _editorExpandedSubGroups.Clear();
             }
 
+            // Update filtered cache first to get accurate count
+            UpdateFilteredCache();
+            
             // Total label (adjusted position to prevent cutoff)
             var totalRect = new Rect(collapseAllRect.xMax + 10f, headerRect.y, headerRect.width - (collapseAllRect.xMax + 10f - headerRect.x), 30f);
             var prevAnchor = Text.Anchor;
             Text.Anchor = TextAnchor.MiddleLeft;
-            Widgets.Label(totalRect, $"{("AT_Setting_Editor_Total".Translate())}: {_editorFilteredCache?.Count ?? 0}");
+            int totalCount = 0;
+            if (_editorFilteredGroupCache != null)
+            {
+                totalCount = _editorFilteredGroupCache.Sum(mg => mg.Value.Sum(tg => tg.Value.Count));
+            }
+            Widgets.Label(totalRect, $"{("AT_Setting_Editor_Total".Translate())}: {totalCount}");
             Text.Anchor = prevAnchor;
 
             // Column Headers
@@ -580,23 +590,10 @@ namespace AutoTranslation
             
             var cache = TranslationCacheManager.Instance.Cache;
             
-            IEnumerable<KeyValuePair<string, string>> filtered;
-            if (string.IsNullOrEmpty(_editorSearchQuery))
-            {
-                filtered = cache;
-            }
-            else
-            {
-                var q = _editorSearchQuery.ToLower();
-                filtered = cache.Where(kv => kv.Key.ToLower().Contains(q) || kv.Value.ToLower().Contains(q));
-            }
-            
-            _editorFilteredCache = filtered.ToList();
-            
-            // Group by mod and then by type (DefInjected/Keyed)
+            // Group by mod and then by type (DefInjected/Keyed) - no search filtering here
             _editorGroupedCache = new Dictionary<string, Dictionary<string, List<KeyValuePair<string, string>>>>();
             
-            foreach (var entry in _editorFilteredCache)
+            foreach (var entry in cache)
             {
                 var key = entry.Key;
                 var modId = "Unknown";
@@ -625,6 +622,9 @@ namespace AutoTranslation
                 
                 _editorGroupedCache[modId][translationType].Add(entry);
             }
+            
+            // Invalidate filtered cache when base cache is rebuilt
+            _editorFilteredGroupCache = null;
         }
         
         /// <summary>
@@ -717,24 +717,73 @@ namespace AutoTranslation
             return "Keyed";
         }
 
-        private static void DrawEditorAccordionView(Rect contentRect)
+        private static bool MatchesSearchQuery(KeyValuePair<string, string> entry)
+        {
+            if (string.IsNullOrEmpty(_editorSearchQuery)) return true;
+            
+            var query = _editorSearchQuery.ToLower();
+            return entry.Key.ToLower().Contains(query) || entry.Value.ToLower().Contains(query) || GetModDisplayName(entry.Key).ToLower().Contains(query);
+        }
+        
+        private static void UpdateFilteredCache()
         {
             if (_editorGroupedCache == null || _editorGroupedCache.Count == 0)
             {
                 RefreshEditorFilter();
                 
-                // Still empty after refresh?
                 if (_editorGroupedCache == null || _editorGroupedCache.Count == 0)
                 {
-                    Text.Anchor = TextAnchor.MiddleCenter;
-                    Widgets.Label(contentRect, "No translation data available.");
-                    Text.Anchor = TextAnchor.UpperLeft;
                     return;
                 }
             }
+            
+            // Update filtered cache only if not already cached
+            if (_editorFilteredGroupCache == null)
+            {
+                _editorFilteredGroupCache = new Dictionary<string, Dictionary<string, List<KeyValuePair<string, string>>>>();
+                
+                if (string.IsNullOrEmpty(_editorSearchQuery))
+                {
+                    // No filtering needed
+                    _editorFilteredGroupCache = _editorGroupedCache;
+                }
+                else
+                {
+                    // Apply filtering once and cache
+                    foreach (var modGroup in _editorGroupedCache)
+                    {
+                        var filteredMod = new Dictionary<string, List<KeyValuePair<string, string>>>();
+                        
+                        foreach (var typeGroup in modGroup.Value)
+                        {
+                            var filtered = typeGroup.Value.Where(MatchesSearchQuery).ToList();
+                            if (filtered.Count > 0)
+                            {
+                                filteredMod[typeGroup.Key] = filtered;
+                            }
+                        }
+                        
+                        if (filteredMod.Count > 0)
+                        {
+                            _editorFilteredGroupCache[modGroup.Key] = filteredMod;
+                        }
+                    }
+                }
+            }
+        }
+        
+        private static void DrawEditorAccordionView(Rect contentRect)
+        {
+            if (_editorFilteredGroupCache == null || _editorFilteredGroupCache.Count == 0)
+            {
+                Text.Anchor = TextAnchor.MiddleCenter;
+                Widgets.Label(contentRect, "No translation data available.");
+                Text.Anchor = TextAnchor.UpperLeft;
+                return;
+            }
 
             float totalHeight = 0f;
-            foreach (var modGroup in _editorGroupedCache.OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
+            foreach (var modGroup in _editorFilteredGroupCache.OrderBy(g => GetModDisplayName(g.Key)))
             {
                 totalHeight += GroupHeaderHeight;
                 if (_editorExpandedGroups.Contains(modGroup.Key))
@@ -758,8 +807,9 @@ namespace AutoTranslation
             float viewTop = _editorScrollPosition.y;
             float viewBottom = _editorScrollPosition.y + contentRect.height;
             
-            foreach (var modGroup in _editorGroupedCache.OrderBy(g => g.Key))
+            foreach (var modGroup in _editorFilteredGroupCache.OrderBy(g => GetModDisplayName(g.Key)))
             {
+                
                 var isModExpanded = _editorExpandedGroups.Contains(modGroup.Key);
                 
                 var groupHeaderRect = new Rect(0f, currentY, viewRect.width, GroupHeaderHeight);
@@ -1043,19 +1093,19 @@ namespace AutoTranslation
         {
             if (string.IsNullOrEmpty(modPackageId))
                 return "Unknown";
-            
-            // Try to find the mod by package ID
-            var mod = LoadedModManager.RunningMods.FirstOrDefault(m => 
-                m.PackageId.Equals(modPackageId, StringComparison.OrdinalIgnoreCase));
-            
-            if (mod != null)
-            {
-                // Return the mod name if found
-                return mod.Name;
-            }
-            
-            // Fallback to package ID
-            return modPackageId;
+
+            if (_editorModNameCache.TryGetValue(modPackageId, out var name))
+                return name;
+
+            var mod = AllMods
+                .Select(m => new { m.PackageId, m.Name })
+                .Concat(ModLister.AllInstalledMods.Select(m => new { m.PackageId, m.Name }))
+                .FirstOrDefault(m => m.PackageId.Equals(modPackageId, StringComparison.OrdinalIgnoreCase));
+
+            Log.Message(AutoTranslation.LogPrefix + $"Mod name for {modPackageId}: {mod?.Name ?? modPackageId}");
+
+            _editorModNameCache[modPackageId] = mod?.Name ?? modPackageId;
+            return _editorModNameCache[modPackageId];
         }
     }
 }
