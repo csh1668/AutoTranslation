@@ -120,15 +120,6 @@ namespace AutoTranslation
         }
 
         /// <summary>
-        /// 텍스트가 영어인지 확인합니다.
-        /// </summary>
-        public static bool IsEnglish(string text)
-        {
-            var detected = Detect(text);
-            return detected == DetectedLanguage.English || detected == DetectedLanguage.Unknown || detected == DetectedLanguage.Latin;
-        }
-
-        /// <summary>
         /// 텍스트가 특정 언어인지 확인합니다.
         /// </summary>
         public static bool IsLanguage(string text, string targetLanguageCode)

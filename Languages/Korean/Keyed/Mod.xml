@@ -83,4 +83,23 @@
     <AT_Setting_Editor_ExpandAll>모두 펼치기</AT_Setting_Editor_ExpandAll>
     <AT_Setting_Editor_CollapseAll>모두 접기</AT_Setting_Editor_CollapseAll>
     <AT_Setting_Editor_Total>총합</AT_Setting_Editor_Total>
+    
+    <!-- 일괄 바꾸기 다이얼로그 -->
+    <AT_BulkReplace_Button>일괄 바꾸기</AT_BulkReplace_Button>
+    <AT_BulkReplace_Title>번역 일괄 바꾸기</AT_BulkReplace_Title>
+    <AT_BulkReplace_Filter>필터 (모드 ID/원문)</AT_BulkReplace_Filter>
+    <AT_BulkReplace_FilterTooltip>모드 ID나 원문으로 항목을 필터링합니다. 정규표현식 지원 (예: "modA|modB"로 여러 모드 매치)</AT_BulkReplace_FilterTooltip>
+    <AT_BulkReplace_Find>찾기 (번역문에서)</AT_BulkReplace_Find>
+    <AT_BulkReplace_FindTooltip>번역된 텍스트에서 찾을 패턴입니다. 고급 매칭을 위해 정규표현식 사용 가능 (예: "쥐족|rat-kin")</AT_BulkReplace_FindTooltip>
+    <AT_BulkReplace_Replace>바꿀 내용</AT_BulkReplace_Replace>
+    <AT_BulkReplace_ReplaceTooltip>매치된 부분을 바꿀 텍스트입니다. 정규표현식 캡처 그룹은 $1, $2 등으로 사용</AT_BulkReplace_ReplaceTooltip>
+    <AT_BulkReplace_UseRegex>정규표현식 사용</AT_BulkReplace_UseRegex>
+    <AT_BulkReplace_CaseSensitive>대소문자 구분</AT_BulkReplace_CaseSensitive>
+    <AT_BulkReplace_Preview>미리보기</AT_BulkReplace_Preview>
+    <AT_BulkReplace_PreviewResults>미리보기 결과</AT_BulkReplace_PreviewResults>
+    <AT_BulkReplace_NoMatches>일치하는 항목이 없습니다. 필터를 조정하고 다시 시도하세요.</AT_BulkReplace_NoMatches>
+    <AT_BulkReplace_ReplaceAll>모두 바꾸기</AT_BulkReplace_ReplaceAll>
+    <AT_BulkReplace_NoChanges>적용할 변경사항이 없습니다.</AT_BulkReplace_NoChanges>
+    <AT_BulkReplace_Success>일괄 바꾸기가 성공적으로 완료되었습니다!</AT_BulkReplace_Success>
+    <AT_BulkReplace_Error>일괄 바꾸기 중 오류가 발생했습니다. 로그를 확인하세요.</AT_BulkReplace_Error>
 </LanguageData>

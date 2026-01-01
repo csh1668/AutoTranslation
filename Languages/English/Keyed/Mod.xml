@@ -83,4 +83,23 @@
     <AT_Setting_Editor_ExpandAll>Expand All</AT_Setting_Editor_ExpandAll>
     <AT_Setting_Editor_CollapseAll>Collapse All</AT_Setting_Editor_CollapseAll>
     <AT_Setting_Editor_Total>Total</AT_Setting_Editor_Total>
+    
+    <!-- Bulk Replace Dialog -->
+    <AT_BulkReplace_Button>Bulk Replace</AT_BulkReplace_Button>
+    <AT_BulkReplace_Title>Bulk Replace Translations</AT_BulkReplace_Title>
+    <AT_BulkReplace_Filter>Filter (Mod ID/Original Text)</AT_BulkReplace_Filter>
+    <AT_BulkReplace_FilterTooltip>Filter entries by Mod ID or original text. Supports regex (e.g., "modA|modB" to match multiple mods)</AT_BulkReplace_FilterTooltip>
+    <AT_BulkReplace_Find>Find (in Translation)</AT_BulkReplace_Find>
+    <AT_BulkReplace_FindTooltip>Pattern to find in translated text. Use regex for advanced matching (e.g., "쥐족|rat-kin")</AT_BulkReplace_FindTooltip>
+    <AT_BulkReplace_Replace>Replace With</AT_BulkReplace_Replace>
+    <AT_BulkReplace_ReplaceTooltip>Text to replace matches with. Use $1, $2, etc. for regex capture groups</AT_BulkReplace_ReplaceTooltip>
+    <AT_BulkReplace_UseRegex>Use Regular Expression</AT_BulkReplace_UseRegex>
+    <AT_BulkReplace_CaseSensitive>Case Sensitive</AT_BulkReplace_CaseSensitive>
+    <AT_BulkReplace_Preview>Preview Changes</AT_BulkReplace_Preview>
+    <AT_BulkReplace_PreviewResults>Preview Results</AT_BulkReplace_PreviewResults>
+    <AT_BulkReplace_NoMatches>No matches found. Adjust your filters and try again.</AT_BulkReplace_NoMatches>
+    <AT_BulkReplace_ReplaceAll>Replace All</AT_BulkReplace_ReplaceAll>
+    <AT_BulkReplace_NoChanges>No changes to apply.</AT_BulkReplace_NoChanges>
+    <AT_BulkReplace_Success>Bulk replace completed successfully!</AT_BulkReplace_Success>
+    <AT_BulkReplace_Error>Error occurred during bulk replace. Check logs for details.</AT_BulkReplace_Error>
 </LanguageData>

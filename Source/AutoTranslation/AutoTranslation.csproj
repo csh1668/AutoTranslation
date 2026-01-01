@@ -86,6 +86,7 @@
     <Compile Include="APIKeyRotater.cs" />
     <Compile Include="CompatibilityPatches.cs" />
     <Compile Include="DefInjectionUtilityCustom.cs" />
+    <Compile Include="Dialog_BulkReplace.cs" />
     <Compile Include="AutoTranslation.cs" />
     <Compile Include="Helpers.cs" />
     <Compile Include="KeyedUtility.cs" />

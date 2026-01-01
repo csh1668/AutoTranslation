@@ -499,7 +499,7 @@ namespace AutoTranslation
             var contentRect = new Rect(inRect.x, inRect.y + 75f, inRect.width, inRect.height - 75f);
 
             // Search Bar (adjusted width to accommodate all buttons)
-            var searchRect = new Rect(headerRect.x, headerRect.y, headerRect.width - 400f, 30f);
+            var searchRect = new Rect(headerRect.x, headerRect.y, headerRect.width - 510f, 30f);
             var newQuery = Widgets.TextField(searchRect, _editorSearchQuery);
             if (newQuery != _editorSearchQuery)
             {
@@ -515,8 +515,15 @@ namespace AutoTranslation
                 Messages.Message("AT_Setting_Editor_Refreshed".Translate(), MessageTypeDefOf.PositiveEvent, false);
             }
             
+            // Bulk Replace button
+            var bulkReplaceRect = new Rect(refreshRect.xMax + 5f, headerRect.y, 100f, 30f);
+            if (Widgets.ButtonText(bulkReplaceRect, "AT_BulkReplace_Button".Translate()))
+            {
+                Find.WindowStack.Add(new Dialog_BulkReplace());
+            }
+            
             // Expand/Collapse All buttons (smaller widths)
-            var expandAllRect = new Rect(refreshRect.xMax + 5f, headerRect.y, 80f, 30f);
+            var expandAllRect = new Rect(bulkReplaceRect.xMax + 5f, headerRect.y, 80f, 30f);
             if (Widgets.ButtonText(expandAllRect, "AT_Setting_Editor_ExpandAll".Translate()))
             {
                 if (_editorGroupedCache != null)
@@ -554,7 +561,7 @@ namespace AutoTranslation
             DrawEditorAccordionView(contentRect);
         }
 
-        private static void RefreshEditorFilter()
+        public static void RefreshEditorFilter()
         {
             // Sync TranslatorManager cache to TranslationCacheManager if needed
             if (TranslatorManager.CachedTranslationsV2 != null && TranslatorManager.CachedTranslationsV2.Count > 0)
