@@ -1102,8 +1102,6 @@ namespace AutoTranslation
                 .Concat(ModLister.AllInstalledMods.Select(m => new { m.PackageId, m.Name }))
                 .FirstOrDefault(m => m.PackageId.Equals(modPackageId, StringComparison.OrdinalIgnoreCase));
 
-            Log.Message(AutoTranslation.LogPrefix + $"Mod name for {modPackageId}: {mod?.Name ?? modPackageId}");
-
             _editorModNameCache[modPackageId] = mod?.Name ?? modPackageId;
             return _editorModNameCache[modPackageId];
         }
