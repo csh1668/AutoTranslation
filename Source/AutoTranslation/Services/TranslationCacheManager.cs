@@ -4,11 +4,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Xml;
 using Verse;
 
-namespace AutoTranslation
+namespace AutoTranslation.Services
 {
     public class TranslationCacheManager
     {
@@ -208,3 +207,4 @@ namespace AutoTranslation
         }
     }
 }
+

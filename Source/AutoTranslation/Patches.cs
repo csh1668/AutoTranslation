@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using AutoTranslation.Services;
 using HarmonyLib;
 using RimWorld;
 using UnityEngine;

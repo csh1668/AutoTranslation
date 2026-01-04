@@ -9,10 +9,3 @@ namespace AutoTranslation.Translators
         }
     }
 }
-
-
-
-
-
-
-

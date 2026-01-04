@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.RegularExpressions;
+using AutoTranslation.Services;
 using RimWorld;
 using UnityEngine;
 using Verse;
 
-namespace AutoTranslation
+namespace AutoTranslation.UI
 {
     public class Dialog_BulkReplace : Window
     {

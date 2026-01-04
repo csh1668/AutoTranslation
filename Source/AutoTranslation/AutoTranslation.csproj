@@ -83,24 +83,24 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="APIKeyRotater.cs" />
+    <Compile Include="Services\APIKeyRotater.cs" />
     <Compile Include="CompatibilityPatches.cs" />
-    <Compile Include="DefInjectionUtilityCustom.cs" />
-    <Compile Include="Dialog_BulkReplace.cs" />
+    <Compile Include="Utilities\DefInjectionUtilityCustom.cs" />
+    <Compile Include="UI\Dialog_BulkReplace.cs" />
     <Compile Include="AutoTranslation.cs" />
-    <Compile Include="Helpers.cs" />
-    <Compile Include="KeyedUtility.cs" />
-    <Compile Include="LanguageDetector.cs" />
-    <Compile Include="MigrationHelper.cs" />
-    <Compile Include="NetworkHelper.cs" />
-    <Compile Include="ReflectionCache.cs" />
+    <Compile Include="Utilities\Helpers.cs" />
+    <Compile Include="Utilities\KeyedUtility.cs" />
+    <Compile Include="Services\LanguageDetector.cs" />
+    <Compile Include="Utilities\MigrationHelper.cs" />
+    <Compile Include="Utilities\NetworkHelper.cs" />
+    <Compile Include="Utilities\ReflectionCache.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="Patches.cs" />
     <Compile Include="StaticConstructor.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="InjectionManager.cs" />
-    <Compile Include="TranslationCacheManager.cs" />
-    <Compile Include="TranslatorManager.cs" />
+    <Compile Include="Services\InjectionManager.cs" />
+    <Compile Include="Services\TranslationCacheManager.cs" />
+    <Compile Include="Services\TranslatorManager.cs" />
     <Compile Include="Translators\ITranslator.cs" />
     <Compile Include="Translators\TranslatorSettings.cs" />
     <Compile Include="Translators\TranslatorSettings_AIModel.cs" />

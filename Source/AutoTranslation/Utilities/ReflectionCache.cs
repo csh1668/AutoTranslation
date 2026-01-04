@@ -4,7 +4,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using Verse;
 
-namespace AutoTranslation
+namespace AutoTranslation.Utilities
 {
     /// <summary>
     /// Provides fast, compiled field access using Expression Trees.

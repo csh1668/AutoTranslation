@@ -1,9 +1,8 @@
-using System;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Verse;
 
-namespace AutoTranslation
+namespace AutoTranslation.Services
 {
     /// <summary>
     /// 텍스트의 언어를 감지하는 유틸리티 클래스
@@ -297,3 +296,4 @@ namespace AutoTranslation
         }
     }
 }
+

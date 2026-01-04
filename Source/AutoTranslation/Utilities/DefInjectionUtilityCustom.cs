@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -6,11 +6,12 @@ using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using AutoTranslation.Services;
 using RimWorld;
 using Verse;
 using static Verse.DefInjectionPackage;
 
-namespace AutoTranslation
+namespace AutoTranslation.Utilities
 {
     // Custom comparer that uses reference equality only (doesn't call GetHashCode/Equals)
     internal class ReferenceEqualityComparer : IEqualityComparer<object>
@@ -525,3 +526,4 @@ namespace AutoTranslation
         }
     }
 }
+

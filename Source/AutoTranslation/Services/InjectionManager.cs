@@ -1,14 +1,12 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
+using AutoTranslation.Utilities;
 using RimWorld;
 using Verse;
 
-namespace AutoTranslation
+namespace AutoTranslation.Services
 {
     public static class InjectionManager
     {
@@ -551,3 +549,4 @@ namespace AutoTranslation
         }
     }
 }
+

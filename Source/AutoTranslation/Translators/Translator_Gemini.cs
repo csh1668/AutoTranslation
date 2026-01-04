@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using RimWorld;
 using Verse;
 using AutoTranslation;
+using AutoTranslation.Utilities;
 
 namespace AutoTranslation.Translators
 {

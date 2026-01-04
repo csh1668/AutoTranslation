@@ -8,6 +8,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using AutoTranslation.Utilities;
 using RimWorld;
 using UnityEngine.Networking;
 using Verse;

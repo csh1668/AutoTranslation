@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 using UnityEngine.Networking;
 using Verse;
 using AutoTranslation;
+using AutoTranslation.Utilities;
 
 namespace AutoTranslation.Translators
 {

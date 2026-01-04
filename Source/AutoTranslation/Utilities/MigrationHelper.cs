@@ -2,10 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Xml;
+using AutoTranslation.Services;
 using AutoTranslation.Translators;
 using Verse;
 
-namespace AutoTranslation
+namespace AutoTranslation.Utilities
 {
     /// <summary>
     /// Handles migration from old versions to maintain compatibility with existing user data

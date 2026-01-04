@@ -1,19 +1,17 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoTranslation.Translators;
-using RimWorld;
-using UnityEngine.Networking;
+using AutoTranslation.Utilities;
 using Verse;
 
-namespace AutoTranslation
+namespace AutoTranslation.Services
 {
     public static class TranslatorManager
     {
@@ -497,3 +495,4 @@ namespace AutoTranslation
         }
     }
 }
+

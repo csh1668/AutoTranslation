@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using RimWorld;
 using Verse;
 using AutoTranslation;
+using AutoTranslation.Utilities;
 
 namespace AutoTranslation.Translators
 {

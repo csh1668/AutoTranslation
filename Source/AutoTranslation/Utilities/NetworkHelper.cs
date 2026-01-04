@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading;
 using Verse;
 
-namespace AutoTranslation
+namespace AutoTranslation.Utilities
 {
     public static class NetworkHelper
     {
@@ -162,3 +162,4 @@ namespace AutoTranslation
         }
     }
 }
+

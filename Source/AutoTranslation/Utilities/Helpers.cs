@@ -1,15 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Xml;
-using AutoTranslation.Translators;
 
-namespace AutoTranslation
+namespace AutoTranslation.Utilities
 {
     internal static class Helpers
     {
@@ -274,3 +270,4 @@ namespace AutoTranslation
         }
     }
 }
+

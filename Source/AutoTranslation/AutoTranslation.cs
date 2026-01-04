@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using AutoTranslation.Services;
+using AutoTranslation.Utilities;
 using HarmonyLib;
 using UnityEngine;
 using Verse;

@@ -6,6 +6,8 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using AutoTranslation.Services;
+using AutoTranslation.Utilities;
 using RimWorld;
 using UnityEngine;
 using Verse;
