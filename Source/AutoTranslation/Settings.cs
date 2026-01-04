@@ -43,6 +43,7 @@ namespace AutoTranslation
         private static HashSet<string> _editorExpandedSubGroups = new HashSet<string>();
         private static string _editingKey = null;
         private static string _editingValue = "";
+        private static bool _restartRequired = false;
         private const float RowHeight = 35f;
         private const float GroupHeaderHeight = 30f;
         private const float SubGroupHeaderHeight = 28f;
@@ -496,8 +497,27 @@ namespace AutoTranslation
             }
 
             var headerRect = inRect.TopPartPixels(40f);
-            var columnHeaderRect = new Rect(inRect.x, inRect.y + 45f, inRect.width - 20f, 25f); // Reduce width to prevent overflow
-            var contentRect = new Rect(inRect.x, inRect.y + 75f, inRect.width, inRect.height - 75f);
+            
+            float topOffset = 45f;
+            
+            // Restart Warning
+            if (_restartRequired)
+            {
+                var warningRect = new Rect(inRect.x, inRect.y + topOffset, inRect.width, 25f);
+                var prevColor = GUI.color;
+                GUI.color = Color.red;
+                Text.Anchor = TextAnchor.MiddleCenter;
+                Widgets.Label(warningRect, "AT_Setting_Editor_RestartRequired".Translate());
+                Text.Anchor = TextAnchor.UpperLeft;
+                GUI.color = prevColor;
+                
+                topOffset += 30f;
+            }
+
+            var columnHeaderRect = new Rect(inRect.x, inRect.y + topOffset, inRect.width - 20f, 25f); // Reduce width to prevent overflow
+            topOffset += 30f;
+            
+            var contentRect = new Rect(inRect.x, inRect.y + topOffset, inRect.width, inRect.height - topOffset);
 
             // Search Bar (adjusted width to accommodate all buttons)
             var searchRect = new Rect(headerRect.x, headerRect.y, headerRect.width - 510f, 30f);
@@ -978,10 +998,8 @@ namespace AutoTranslation
                     TranslationCacheManager.AddOrUpdate(entry.Key, newValue);
                     TranslatorManager.CachedTranslationsV2[entry.Key] = newValue;
                     
-                    // Re-inject all translations to apply changes
-                    InjectionManager.UndoInjectAll();
-                    ResetDefCaches();
-                    InjectionManager.InjectAll();
+                    // Changes require restart to take effect
+                    _restartRequired = true;
                     
                     _editingKey = null;
                     RefreshEditorFilter();
@@ -1002,9 +1020,8 @@ namespace AutoTranslation
                 TranslationCacheManager.Remove(entry.Key);
                 TranslatorManager.CachedTranslationsV2.TryRemove(entry.Key, out _);
                 
-                // Re-inject all translations to apply changes
-                InjectionManager.UndoInjectAll();
-                InjectionManager.InjectAll();
+                // Changes require restart to take effect
+                _restartRequired = true;
                 
                 RefreshEditorFilter();
             }

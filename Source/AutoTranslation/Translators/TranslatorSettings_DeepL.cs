@@ -13,8 +13,3 @@ namespace AutoTranslation.Translators
     }
 }
 
-
-
-
-
-

@@ -83,6 +83,7 @@
     <AT_Setting_Editor_ExpandAll>Expand All</AT_Setting_Editor_ExpandAll>
     <AT_Setting_Editor_CollapseAll>Collapse All</AT_Setting_Editor_CollapseAll>
     <AT_Setting_Editor_Total>Total</AT_Setting_Editor_Total>
+    <AT_Setting_Editor_RestartRequired>Changes will be applied after game restart.</AT_Setting_Editor_RestartRequired>
     
     <!-- Bulk Replace Dialog -->
     <AT_BulkReplace_Button>Bulk Replace</AT_BulkReplace_Button>

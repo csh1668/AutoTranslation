@@ -83,6 +83,7 @@
     <AT_Setting_Editor_ExpandAll>모두 펼치기</AT_Setting_Editor_ExpandAll>
     <AT_Setting_Editor_CollapseAll>모두 접기</AT_Setting_Editor_CollapseAll>
     <AT_Setting_Editor_Total>총합</AT_Setting_Editor_Total>
+    <AT_Setting_Editor_RestartRequired>변경사항은 게임 재시작 후 적용됩니다.</AT_Setting_Editor_RestartRequired>
     
     <!-- 일괄 바꾸기 다이얼로그 -->
     <AT_BulkReplace_Button>일괄 바꾸기</AT_BulkReplace_Button>
