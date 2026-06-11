@@ -4,6 +4,7 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Threading;
+using AutoTranslation.Services;
 using Verse;
 
 namespace AutoTranslation.Utilities
@@ -77,10 +78,25 @@ namespace AutoTranslation.Utilities
                 try
                 {
                     attempts++;
-                    return action();
+                    var result = action();
+                    NetworkStateMonitor.ReportSuccess();
+                    return result;
                 }
                 catch (WebException ex)
                 {
+                    if (IsConnectionLevelFailure(ex))
+                    {
+                        NetworkStateMonitor.ReportFailure();
+                    }
+                    else
+                    {
+                        // The server responded (401/404/429/...) - the network itself is up
+                        NetworkStateMonitor.ReportSuccess();
+                    }
+
+                    // While the circuit is open, fail fast: no inner retries, the queue is paused anyway
+                    if (NetworkStateMonitor.IsOpen) throw;
+
                     if (attempts > maxRetries)
                     {
                         Log.Warning($"{AutoTranslation.LogPrefix} Network request failed after {maxRetries} attempts. URL: {context}. Error: {ex.Message}");

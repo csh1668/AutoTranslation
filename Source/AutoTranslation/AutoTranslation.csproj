@@ -85,6 +85,7 @@
   <ItemGroup>
     <Compile Include="Services\APIKeyRotater.cs" />
     <Compile Include="Services\GistService.cs" />
+    <Compile Include="Services\NetworkStateMonitor.cs" />
     <Compile Include="Services\TranslationSerializer.cs" />
     <Compile Include="UI\Dialog_GistMerge.cs" />
     <Compile Include="UI\Dialog_GistPreview.cs" />
