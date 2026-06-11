@@ -6,6 +6,7 @@ using System;
 using AutoTranslation;
 using AutoTranslation.Services;
 using AutoTranslation.Utilities;
+using UnityEngine;
 
 namespace AutoTranslation.Translators
 {
@@ -182,6 +183,24 @@ namespace AutoTranslation.Translators
             TooltipHandler.TipRegion(apiKeyLabelRect, "AT_Setting_RequiresAPIKey_Tooltip".Translate());
             
             Config.APIKey = ls.TextEntry(Config.APIKey);
+
+            // Free keys end with ":fx" and only work against api-free.deepl.com;
+            // using one against the Pro host (or vice versa) yields 403
+            var key = Config.APIKey?.Split(',')[0].Trim() ?? string.Empty;
+            if (key.Length > 0)
+            {
+                var isFreeKey = key.EndsWith(":fx");
+                var isFreeEndpoint = url.Contains("api-free.deepl.com");
+                if (isFreeKey != isFreeEndpoint)
+                {
+                    var prevColor = GUI.color;
+                    GUI.color = Color.red;
+                    ls.Label(isFreeKey
+                        ? "AT_Setting_DeepLFreeKeyOnPro".Translate()
+                        : "AT_Setting_DeepLProKeyOnFree".Translate());
+                    GUI.color = prevColor;
+                }
+            }
         }
     }
 }

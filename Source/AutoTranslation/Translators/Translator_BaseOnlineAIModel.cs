@@ -30,35 +30,39 @@ namespace AutoTranslation.Translators
             }
         }
 
-        public virtual string Model => _model ?? (_model = Config?.UserSelectedModel);
+        public virtual string Model => Config?.UserSelectedModel;
+
+        /// <summary>Last error from loading the model list, for display in settings UI. Null when OK.</summary>
+        public string LastModelsError { get; private set; }
+
         public List<string> Models
         {
             get
             {
-                if (_models != null) return _models;
-                
+                if (_models != null && _models.Count > 0) return _models;
+
                 try
                 {
                     var result = GetModels();
-                    
-                    // Check if GetModels() returned null (indicating failure)
-                    if (result == null)
+
+                    if (result == null || result.Count == 0)
                     {
-                        var msg = AutoTranslation.LogPrefix + $"{Name}: Failed to load models (returned null)";
-                        Log.ErrorOnce(msg, msg.GetHashCode());
-                        _models = new List<string>(); // Store empty list to prevent retries
-                        return _models;
+                        LastModelsError = "AT_Setting_NoModelFound".Translate();
+                        _models = null; // do NOT cache failure - allow retry on next click
+                        return new List<string>();
                     }
-                    
+
+                    LastModelsError = null;
                     _models = result;
                     return _models;
                 }
                 catch (Exception e)
                 {
-                    var msg = AutoTranslation.LogPrefix + $"{Name}: Failed to load models: {e.Message}";
-                    Log.ErrorOnce(msg, msg.GetHashCode());
-                    _models = new List<string>(); // Store empty list to prevent retries
-                    return _models;
+                    LastModelsError = NetworkHelper.ExtractErrorMessage(e);
+                    var msg = AutoTranslation.LogPrefix + $"{Name}: Failed to load models: {LastModelsError}";
+                    Log.WarningOnce(msg, msg.GetHashCode());
+                    _models = null;
+                    return new List<string>();
                 }
             }
         }
@@ -372,10 +376,10 @@ namespace AutoTranslation.Translators
 
         public void ResetSettings()
         {
-            _model = null;
             _models = null;
             _rotater = null;
-            _baseURL = null;
+            _rotaterSource = null;
+            LastModelsError = null;
             Prepare();
         }
 
@@ -419,39 +423,47 @@ namespace AutoTranslation.Translators
             return string.IsNullOrEmpty(customPrompt) ? GetBasePrompt() : customPrompt;
         }
 
-        protected string APIKey =>
-            _rotater == null ? (_rotater = new APIKeyRotater(Config?.UserAPIKey?.Split(',') ?? new string[0])).Key : _rotater.Key;
+        protected int TimeoutMs => Math.Max(10, Config?.RequestTimeoutSeconds ?? 30) * 1000;
+
+        protected string APIKey
+        {
+            get
+            {
+                var source = Config?.UserAPIKey ?? string.Empty;
+                if (_rotater == null || _rotaterSource != source)
+                {
+                    _rotaterSource = source;
+                    var keys = source.Split(',').Where(k => !string.IsNullOrWhiteSpace(k)).ToArray();
+                    _rotater = keys.Length > 0 ? new APIKeyRotater(keys) : null;
+                }
+                return _rotater?.Key ?? string.Empty;
+            }
+        }
 
         protected string RequestURL
         {
             get
             {
-                if (_baseURL == null)
+                var url = Config?.UserCustomBaseURL;
+                if (string.IsNullOrEmpty(url))
                 {
-                    var url = Config?.UserCustomBaseURL;
-                    if (string.IsNullOrEmpty(url))
-                    {
-                        url = BaseURL;
-                    }
-                    
-                    if (!url.EndsWith("/"))
-                    {
-                        url += "/";
-                    }
-
-                    _baseURL = url;
+                    url = BaseURL;
                 }
 
-                return _baseURL;
+                if (!url.EndsWith("/"))
+                {
+                    url += "/";
+                }
+
+                return url;
             }
         }
 
 
         protected APIKeyRotater _rotater = null;
+        private string _rotaterSource;
 
         private List<string> _models;
-        private string _model = null;
-        private string _baseURL = null;
 
         public void DrawSettings(Listing_Standard ls)
         {
@@ -487,16 +499,22 @@ namespace AutoTranslation.Translators
                 }
                 else
                 {
-                    Messages.Message("AT_Message_NoModelsFound".Translate(), MessageTypeDefOf.NegativeEvent);
+                    var failMsg = "AT_Message_NoModelsFound".Translate().ToString();
+                    if (!string.IsNullOrEmpty(LastModelsError)) failMsg += "\n" + LastModelsError;
+                    Messages.Message(failMsg, MessageTypeDefOf.NegativeEvent);
                 }
             }
-            
-            // Show text entry if models is empty (as fallback for manual entry)
-            // Don't use Models property here to avoid triggering API call every frame
-            if (_models != null && _models.Count == 0)
+
+            if (!string.IsNullOrEmpty(LastModelsError))
             {
-                Config.UserSelectedModel = ls.TextEntry(Config.UserSelectedModel);
+                var prevColor = GUI.color;
+                GUI.color = Color.red;
+                ls.Label(LastModelsError);
+                GUI.color = prevColor;
             }
+
+            ls.Label("AT_Setting_ManualModelEntry".Translate());
+            Config.UserSelectedModel = ls.TextEntry(Config.UserSelectedModel);
 
             ls.Gap();
             
@@ -541,7 +559,26 @@ namespace AutoTranslation.Translators
                 
                 ls.Gap(6f);
             }
-            
+
+            ls.Gap();
+
+            var timeoutLabelRect = ls.GetRect(Text.LineHeight);
+            Widgets.Label(timeoutLabelRect, "AT_Setting_RequestTimeout".Translate() + $": {Config.RequestTimeoutSeconds}s");
+            TooltipHandler.TipRegion(timeoutLabelRect, "AT_Setting_RequestTimeout_Tooltip".Translate());
+
+            var newTimeout = Widgets.HorizontalSlider(
+                ls.GetRect(22f),
+                Config.RequestTimeoutSeconds,
+                10f,
+                300f,
+                true,
+                null,
+                "10s",
+                "300s",
+                10f
+            );
+            Config.RequestTimeoutSeconds = Mathf.RoundToInt(newTimeout / 10f) * 10;
+
             ls.Gap();
 
             if (ls.ButtonText("AT_Setting_Reset".Translate()))
@@ -553,6 +590,7 @@ namespace AutoTranslation.Translators
                 Config.UserCustomPrompt = "";
                 Config.EnableBatchTranslation = true;
                 Config.BatchSizeTokens = 2000;
+                Config.RequestTimeoutSeconds = 30;
                 ResetSettings();
             }
         }

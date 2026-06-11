@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AutoTranslation.Translators;
 using AutoTranslation.Utilities;
+using RimWorld;
 using Verse;
 
 namespace AutoTranslation.Services
@@ -115,6 +116,23 @@ namespace AutoTranslation.Services
                 .Replace("\\\"", "\"")).Trim();
         }
 
+        private static bool _networkPauseNotified;
+
+        private static void NotifyNetworkStateIfChanged()
+        {
+            var isOpen = NetworkStateMonitor.IsOpen;
+            if (isOpen == _networkPauseNotified) return;
+            _networkPauseNotified = isOpen;
+            // Messages must be shown from the main thread
+            LongEventHandler.ExecuteWhenFinished(() =>
+            {
+                if (isOpen)
+                    Messages.Message("AT_Message_NetworkPaused".Translate(), MessageTypeDefOf.NegativeEvent);
+                else
+                    Messages.Message("AT_Message_NetworkResumed".Translate(), MessageTypeDefOf.PositiveEvent);
+            });
+        }
+
         public static void StartThread()
         {
             if (CurrentTranslator == null)
@@ -148,6 +166,36 @@ namespace AutoTranslation.Services
                     
                     if (_queue.Count > 0)
                     {
+                        NotifyNetworkStateIfChanged();
+
+                        if (NetworkStateMonitor.IsOpen)
+                        {
+                            // Circuit open: requests are paused. Periodically let ONE item
+                            // through as a probe; its outcome closes or keeps the circuit.
+                            if (NetworkStateMonitor.TryEnterProbe() && _queue.TryDequeue(out var probeItem))
+                            {
+                                _inQueue.TryRemove(probeItem.Key, out _);
+                                var original = probeItem;
+                                var wrapped = new KeyValuePair<string, Action<string, bool>>(original.Key, (t, s) =>
+                                {
+                                    if (!s && NetworkStateMonitor.IsOpen)
+                                    {
+                                        // Probe failed due to network: put the item back, don't drop it
+                                        _queue.Enqueue(original);
+                                        _inQueue.TryAdd(original.Key, 0);
+                                        return;
+                                    }
+                                    original.Value(t, s);
+                                });
+                                ProcessIndividualTranslation(wrapped);
+                            }
+                            else
+                            {
+                                await Task.Delay(1000);
+                            }
+                            continue;
+                        }
+
                         // Check if batch translation is supported and enabled
                         var aiConfig = CurrentTranslator?.Settings as TranslatorSettings_AIModel;
                         bool useBatch = CurrentTranslator?.SupportsBatchTranslation == true && 
@@ -447,11 +495,17 @@ namespace AutoTranslation.Services
         private static void HandleTranslationError(KeyValuePair<string, Action<string, bool>> pair, Exception ex)
         {
             // Check if this is a network timeout/error that we can retry
-            bool shouldRetry = ex is WebException webEx && 
-                (webEx.Status == WebExceptionStatus.Timeout || 
-                 webEx.Status == WebExceptionStatus.ConnectionClosed ||
-                 webEx.Status == WebExceptionStatus.ReceiveFailure);
-            
+            bool shouldRetry = ex is WebException webEx && NetworkHelper.IsConnectionLevelFailure(webEx);
+
+            if (shouldRetry && NetworkStateMonitor.IsOpen)
+            {
+                // Network is down: requeue without consuming the retry budget.
+                // The queue loop is paused, so this does not spin.
+                _queue.Enqueue(pair);
+                _inQueue.TryAdd(pair.Key, 0);
+                return;
+            }
+
             if (shouldRetry)
             {
                 var currentRetries = _retryCount.AddOrUpdate(pair.Key, 1, (k, v) => v + 1);
