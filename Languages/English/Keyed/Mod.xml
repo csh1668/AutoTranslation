@@ -25,6 +25,8 @@
     <AT_ChooseModel>Choose Model</AT_ChooseModel>
     <AT_Setting_ManualModelEntry>Or enter a model name manually:</AT_Setting_ManualModelEntry>
     <AT_Setting_LibreTranslateKeyNotice>Note: the official libretranslate.com instance now requires a paid API key (portal.libretranslate.com). Self-hosted instances need no key.</AT_Setting_LibreTranslateKeyNotice>
+    <AT_Setting_DeepLFreeKeyOnPro>This looks like a DeepL Free key (ends with ":fx"). Please select the "DeepL" translator instead of "DeepL Pro".</AT_Setting_DeepLFreeKeyOnPro>
+    <AT_Setting_DeepLProKeyOnFree>This looks like a DeepL Pro key. Please select the "DeepL Pro" translator instead of "DeepL".</AT_Setting_DeepLProKeyOnFree>
     <AT_Setting_CustomPrompt>Custom system prompt: </AT_Setting_CustomPrompt>
     <AT_Setting_BaseURL>Base URL: </AT_Setting_BaseURL>
     <AT_Setting_CustomBaseURL>Custom base URL: </AT_Setting_CustomBaseURL>
