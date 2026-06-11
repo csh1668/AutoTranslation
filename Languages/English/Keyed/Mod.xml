@@ -72,6 +72,8 @@
     <AT_Setting_EnableBatchTranslation_Tooltip>Translate multiple texts in a single API call for better performance. Only available for AI model translators (GPT, Gemini, Claude, etc.). Can improve translation speed by 5-10x.</AT_Setting_EnableBatchTranslation_Tooltip>
     <AT_Setting_BatchSize>Batch Size (tokens)</AT_Setting_BatchSize>
     <AT_Setting_BatchSize_Tooltip>Number of tokens to collect before sending a batch request. Higher values = fewer API calls but slower individual responses. Recommended: 1500-3000.</AT_Setting_BatchSize_Tooltip>
+    <AT_Setting_RequestTimeout>Request timeout</AT_Setting_RequestTimeout>
+    <AT_Setting_RequestTimeout_Tooltip>How long to wait for one API response before giving up. Cloud APIs usually answer within 30s; local LLMs (LM Studio, Ollama) often need 120-300s, especially with large batch sizes.</AT_Setting_RequestTimeout_Tooltip>
     <AT_Setting_TranslationEditor>Translation Data Editor</AT_Setting_TranslationEditor>
     <AT_Setting_Editor_Search>Search...</AT_Setting_Editor_Search>
     <AT_Setting_Editor_Edit>Edit</AT_Setting_Editor_Edit>

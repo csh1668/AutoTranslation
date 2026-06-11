@@ -72,6 +72,8 @@
     <AT_Setting_EnableBatchTranslation_Tooltip>여러 텍스트를 하나의 API 호출로 번역하여 성능을 향상시킵니다. AI 모델 번역기(GPT, Gemini, Claude 등)에서만 사용 가능합니다. 번역 속도를 5-10배 향상시킬 수 있습니다.</AT_Setting_EnableBatchTranslation_Tooltip>
     <AT_Setting_BatchSize>배치 크기 (토큰)</AT_Setting_BatchSize>
     <AT_Setting_BatchSize_Tooltip>배치 요청을 보내기 전에 수집할 토큰 수입니다. 값이 클수록 API 호출은 줄지만 개별 응답은 느려집니다. 권장값: 1500-3000.</AT_Setting_BatchSize_Tooltip>
+    <AT_Setting_RequestTimeout>요청 타임아웃</AT_Setting_RequestTimeout>
+    <AT_Setting_RequestTimeout_Tooltip>API 응답을 포기하기 전까지 기다리는 시간입니다. 클라우드 API는 보통 30초 안에 응답하지만, 로컬 LLM(LM Studio, Ollama)은 배치 크기가 크면 120-300초가 필요할 수 있습니다.</AT_Setting_RequestTimeout_Tooltip>
     <AT_Setting_TranslationEditor>번역 데이터 편집기</AT_Setting_TranslationEditor>
     <AT_Setting_Editor_Search>검색...</AT_Setting_Editor_Search>
     <AT_Setting_Editor_Edit>편집</AT_Setting_Editor_Edit>

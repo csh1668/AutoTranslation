@@ -27,7 +27,7 @@ namespace AutoTranslation.Translators
                     headers.Add("Authorization", "Bearer " + APIKey);
                 }
 
-                var raw = NetworkHelper.Get(url, headers);
+                var raw = NetworkHelper.Get(url, headers, timeoutMs: TimeoutMs);
                 
                 // Try standard OpenAI format
                 var models = raw.GetStringValuesFromJson("id");
@@ -82,7 +82,7 @@ namespace AutoTranslation.Translators
                 headers.Add("Authorization", "Bearer " + APIKey);
             }
 
-            var response = NetworkHelper.Post(url, requestBody, headers);
+            var response = NetworkHelper.Post(url, requestBody, headers, timeoutMs: TimeoutMs);
             return response;
         }
 

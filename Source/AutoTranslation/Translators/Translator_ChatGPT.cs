@@ -23,7 +23,7 @@ namespace AutoTranslation.Translators
                     { "Authorization", "Bearer " + APIKey }
                 };
 
-                var raw = NetworkHelper.Get(Helpers.CombineUrl(RequestURL, "models"), headers);
+                var raw = NetworkHelper.Get(Helpers.CombineUrl(RequestURL, "models"), headers, timeoutMs: TimeoutMs);
                 var models = raw.GetStringValuesFromJson("id");
 
                 return models;
@@ -57,7 +57,7 @@ namespace AutoTranslation.Translators
                 { "Authorization", "Bearer " + APIKey }
             };
 
-            return NetworkHelper.Post(Helpers.CombineUrl(RequestURL, "chat", "completions"), requestBody, headers);
+            return NetworkHelper.Post(Helpers.CombineUrl(RequestURL, "chat", "completions"), requestBody, headers, timeoutMs: TimeoutMs);
         }
 
         protected override string ParseResponse(string response)

@@ -419,6 +419,8 @@ namespace AutoTranslation.Translators
             return string.IsNullOrEmpty(customPrompt) ? GetBasePrompt() : customPrompt;
         }
 
+        protected int TimeoutMs => Math.Max(10, Config?.RequestTimeoutSeconds ?? 30) * 1000;
+
         protected string APIKey =>
             _rotater == null ? (_rotater = new APIKeyRotater(Config?.UserAPIKey?.Split(',') ?? new string[0])).Key : _rotater.Key;
 
@@ -541,7 +543,26 @@ namespace AutoTranslation.Translators
                 
                 ls.Gap(6f);
             }
-            
+
+            ls.Gap();
+
+            var timeoutLabelRect = ls.GetRect(Text.LineHeight);
+            Widgets.Label(timeoutLabelRect, "AT_Setting_RequestTimeout".Translate() + $": {Config.RequestTimeoutSeconds}s");
+            TooltipHandler.TipRegion(timeoutLabelRect, "AT_Setting_RequestTimeout_Tooltip".Translate());
+
+            var newTimeout = Widgets.HorizontalSlider(
+                ls.GetRect(22f),
+                Config.RequestTimeoutSeconds,
+                10f,
+                300f,
+                true,
+                null,
+                "10s",
+                "300s",
+                10f
+            );
+            Config.RequestTimeoutSeconds = Mathf.RoundToInt(newTimeout / 10f) * 10;
+
             ls.Gap();
 
             if (ls.ButtonText("AT_Setting_Reset".Translate()))
@@ -553,6 +574,7 @@ namespace AutoTranslation.Translators
                 Config.UserCustomPrompt = "";
                 Config.EnableBatchTranslation = true;
                 Config.BatchSizeTokens = 2000;
+                Config.RequestTimeoutSeconds = 30;
                 ResetSettings();
             }
         }

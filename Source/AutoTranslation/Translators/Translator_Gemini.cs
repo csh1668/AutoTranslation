@@ -25,7 +25,7 @@ namespace AutoTranslation.Translators
                 var key = APIKey;
                 var url = Helpers.CombineUrl(RequestURL, "models") + $"?key={key}";
                 
-                var raw = NetworkHelper.Get(url);
+                var raw = NetworkHelper.Get(url, timeoutMs: TimeoutMs);
 
                 var models = raw.GetStringValuesFromJson("name").Select(n => n.Split('/').Last()).ToList();
 
@@ -70,7 +70,7 @@ namespace AutoTranslation.Translators
 	            }}
             }}";
 
-            return NetworkHelper.Post(url, requestBody);
+            return NetworkHelper.Post(url, requestBody, timeoutMs: TimeoutMs);
         }
 
         protected override string ParseResponse(string response)

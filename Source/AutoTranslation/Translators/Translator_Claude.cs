@@ -28,7 +28,7 @@ namespace AutoTranslation.Translators
                     { "anthropic-version", AnthropicVersion }
                 };
 
-                var raw = NetworkHelper.Get(Helpers.CombineUrl(RequestURL, "models"), headers);
+                var raw = NetworkHelper.Get(Helpers.CombineUrl(RequestURL, "models"), headers, timeoutMs: TimeoutMs);
                 var models = raw.GetStringValuesFromJson("id");
 
                 return models;
@@ -65,7 +65,7 @@ namespace AutoTranslation.Translators
                 { "anthropic-version", AnthropicVersion }
             };
 
-            return NetworkHelper.Post(Helpers.CombineUrl(RequestURL, "messages"), requestBody, headers);
+            return NetworkHelper.Post(Helpers.CombineUrl(RequestURL, "messages"), requestBody, headers, timeoutMs: TimeoutMs);
         }
 
         private const string AnthropicVersion = "2023-06-01";
