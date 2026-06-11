@@ -55,15 +55,10 @@ namespace AutoTranslation.Translators
                     ""format"": ""text""{apiKeyField}
                 }}";
 
-                Log.Message(AutoTranslation.LogPrefix + $"{Name}: Request URL: {url}");
-                Log.Message(AutoTranslation.LogPrefix + $"{Name}: Request body: {body}");
-                Log.Message(AutoTranslation.LogPrefix + $"{Name}: Target language: {TranslateLanguage}");
-
                 var headers = new Dictionary<string, string>();
                 headers["Content-Type"] = "application/json";
 
                 var response = NetworkHelper.Post(url, body, headers);
-                Log.Message(AutoTranslation.LogPrefix + $"{Name}: Response: {response?.Substring(0, Math.Min(200, response?.Length ?? 0))}");
                 
                 var translatedProtected = response.GetStringValueFromJson("translatedText");
                 
@@ -88,7 +83,11 @@ namespace AutoTranslation.Translators
             }
             catch (Exception ex)
             {
-                Log.Warning($"{AutoTranslation.LogPrefix} LibreTranslate failed: {ex.Message}");
+                // Surface the server's error body (e.g. the official instance now
+                // returns 400 "Visit portal.libretranslate.com to get an API key")
+                var reason = NetworkHelper.ExtractErrorMessage(ex);
+                var msg = $"{AutoTranslation.LogPrefix} {Name} failed: {reason}";
+                Log.WarningOnce(msg, msg.GetHashCode());
                 translated = text;
                 return false;
             }
@@ -105,6 +104,13 @@ namespace AutoTranslation.Translators
             if (Settings == null) Settings = new TranslatorSettings_LibreTranslate();
 
             ls.Label("LibreTranslate URL (Default: https://libretranslate.com)");
+
+            var noticeRect = ls.GetRect(Text.LineHeight);
+            var prevColor = GUI.color;
+            GUI.color = Color.yellow;
+            Widgets.Label(noticeRect, "AT_Setting_LibreTranslateKeyNotice".Translate());
+            GUI.color = prevColor;
+
             Config.CustomUrl = ls.TextEntry(Config.CustomUrl);
             
             var apiKeyLabelRect = ls.GetRect(Text.LineHeight);
