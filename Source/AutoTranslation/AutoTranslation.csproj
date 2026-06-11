@@ -84,6 +84,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Services\APIKeyRotater.cs" />
+    <Compile Include="Services\GistService.cs" />
+    <Compile Include="Services\TranslationSerializer.cs" />
+    <Compile Include="UI\Dialog_GistMerge.cs" />
+    <Compile Include="UI\Dialog_GistPreview.cs" />
     <Compile Include="CompatibilityPatches.cs" />
     <Compile Include="Utilities\DefInjectionUtilityCustom.cs" />
     <Compile Include="UI\Dialog_BulkReplace.cs" />

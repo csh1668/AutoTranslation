@@ -36,6 +36,11 @@ namespace AutoTranslation
         private static string TestResultText = string.Empty;
         private static string SearchText = string.Empty;
         
+        // Gist UI State
+        private static string _gistInputText = "";
+        private static bool _gistUploading = false;
+        private static bool _gistDownloading = false;
+        
         // Translation Editor State
         private static string _editorSearchQuery = "";
         private static Vector2 _editorScrollPosition;
@@ -488,7 +493,149 @@ namespace AutoTranslation
                 Application.OpenURL($"file://{TranslationCacheManager.Instance.CacheDirectory}");
             }
 
+            ls.GapLine();
+            ls.Label("AT_Gist_SectionTitle".Translate());
+            
+            // Upload section
+            var uploadRect = ls.GetRect(28f);
+            if (Widgets.ButtonText(uploadRect, "AT_Gist_UploadButton".Translate()))
+            {
+                UploadToGist();
+            }
+            
+            if (_gistUploading)
+            {
+                ls.Label("AT_Gist_Uploading".Translate());
+            }
+            
+            ls.Gap();
+            
+            // Download section
+            ls.Label("AT_Gist_DownloadLabel".Translate());
+            var inputRect = ls.GetRect(28f);
+            _gistInputText = Widgets.TextField(inputRect, _gistInputText);
+            
+            var downloadRect = ls.GetRect(28f);
+            GUI.enabled = !string.IsNullOrEmpty(_gistInputText) && !_gistDownloading;
+            if (Widgets.ButtonText(downloadRect, "AT_Gist_DownloadButton".Translate()))
+            {
+                DownloadFromGist(_gistInputText);
+            }
+            GUI.enabled = true;
+            
+            if (_gistDownloading)
+            {
+                ls.Label("AT_Gist_Downloading".Translate());
+            }
+
             ls.End();
+        }
+        
+        private static void UploadToGist()
+        {
+            if (_gistUploading)
+                return;
+                
+            try
+            {
+                _gistUploading = true;
+                
+                // Sync local cache to manager
+                foreach (var pair in TranslatorManager.CachedTranslationsV2)
+                {
+                    TranslationCacheManager.AddOrUpdate(pair.Key, pair.Value);
+                }
+                
+                // Serialize translations
+                var translations = TranslationCacheManager.Instance.Cache;
+                var jsonData = TranslationSerializer.SerializeToJson(translations.ToDictionary(kvp => kvp.Key, kvp => kvp.Value));
+                
+                // Create metadata
+                var metadata = new TranslationMetadata
+                {
+                    TargetLanguage = LanguageDatabase.activeLanguage?.FriendlyNameEnglish ?? "Unknown",
+                    TranslatorName = TranslatorManager.CurrentTranslator?.Name ?? "Unknown",
+                    TranslatorModel = GetTranslatorModel(),
+                    Date = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                    TranslationCount = translations.Count
+                };
+                
+                // Upload
+                var gistService = new GistService();
+                var result = gistService.UploadTranslation(jsonData, metadata);
+                
+                if (result.Success)
+                {
+                    // Copy Gist URL to clipboard
+                    GUIUtility.systemCopyBuffer = result.GistUrl;
+                    Messages.Message($"{"AT_Gist_UploadSuccess".Translate()}\n{"AT_Gist_CopiedToClipboard".Translate()}: {result.GistUrl}", MessageTypeDefOf.PositiveEvent);
+                }
+                else
+                {
+                    Messages.Message($"{"AT_Gist_UploadFailed".Translate()}: {result.ErrorMessage}", MessageTypeDefOf.NegativeEvent);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"{AutoTranslation.LogPrefix}Error uploading to Gist: {ex.Message}");
+                Messages.Message($"{"AT_Gist_UploadFailed".Translate()}: {ex.Message}", MessageTypeDefOf.NegativeEvent);
+            }
+            finally
+            {
+                _gistUploading = false;
+            }
+        }
+        
+        private static void DownloadFromGist(string input)
+        {
+            if (_gistDownloading || string.IsNullOrEmpty(input))
+                return;
+                
+            try
+            {
+                _gistDownloading = true;
+                
+                var gistService = new GistService();
+                var result = gistService.DownloadTranslation(input);
+                
+                if (result.Success)
+                {
+                    // Show preview dialog first
+                    Find.WindowStack.Add(new Dialog_GistPreview(result.Metadata, () =>
+                    {
+                        // User confirmed, show merge dialog
+                        Find.WindowStack.Add(new Dialog_GistMerge(result.Translations));
+                    }));
+                }
+                else
+                {
+                    Messages.Message($"{"AT_Gist_DownloadFailed".Translate()}: {result.ErrorMessage}", MessageTypeDefOf.NegativeEvent);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"{AutoTranslation.LogPrefix}Error downloading from Gist: {ex.Message}");
+                Messages.Message($"{"AT_Gist_DownloadFailed".Translate()}: {ex.Message}", MessageTypeDefOf.NegativeEvent);
+            }
+            finally
+            {
+                _gistDownloading = false;
+            }
+        }
+        
+        private static string GetTranslatorModel()
+        {
+            var translator = TranslatorManager.CurrentTranslator;
+            if (translator == null)
+                return "Unknown";
+                
+            if (translator is Translator_BaseOnlineAIModel aiTranslator)
+            {
+                var settings = aiTranslator.Settings as TranslatorSettings_AIModel;
+                return settings?.UserSelectedModel ?? "Unknown";
+            }
+            
+            return translator.Name;
         }
 
         private void DoTranslationEditorTab(Rect inRect)
