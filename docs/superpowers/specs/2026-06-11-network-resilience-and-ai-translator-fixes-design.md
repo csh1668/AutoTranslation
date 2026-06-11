@@ -81,13 +81,26 @@
 - **수동 입력 항상 노출**: 모델 수동 입력 텍스트필드를 실패 시에만이 아니라
   항상 표시한다 ("또는 직접 입력" 라벨).
 
-### 4. API 라우트 검증 및 수정
+### 4. API 라우트 검증 결과 (2026-06-11, 라이브 프로브 + 공식 문서)
 
-- 공식 API(DeepL/OpenAI/Claude/Gemini/DeepSeek/LibreTranslate)는 경로·헤더가
-  현행 문서와 일치하는지 확인.
-- 비공식 엔드포인트(Google gtx, Papago 스크래핑, Yandex browser 라우트)는 웹
-  조사로 현재 유효성을 확인하고, 깨졌거나 변경된 것은 이번 작업에서 수정한다.
-- 검증 결과는 구현 계획에 항목별 verdict(OK/변경/깨짐+대안)로 반영한다.
+| 번역기 | 결과 | 조치 |
+|---|---|---|
+| Google `translate_a/single?client=gtx` | 정상 (양 호스트 모두 동작) | 없음. 429/503 시 백오프는 기존 로직으로 충분 |
+| Papago (JS 청크 스크래핑 + HMAC) | 정상 (`v1.9.3_...` 버전 문자열 추출 가능) | 없음 |
+| Yandex browser 라우트 | 정상 | 없음 |
+| DeepL `/v2/translate` | 정상 | Free 키(`:fx` 접미사)를 Pro 호스트에 쓰면 403 → 키 접미사로 잘못된 번역기 선택 감지 시 안내 메시지 |
+| OpenAI `/v1/models`, `/v1/chat/completions` | 정상 (chat/completions 무기한 지원) | 없음 |
+| Anthropic `/v1/messages` (`2023-06-01`) | 정상 | 없음 |
+| Gemini `v1beta` | **변경 필요** | 페이지네이션 필수(기본 pageSize 50, 모델 50개 초과): `pageSize=1000` + `nextPageToken` 루프. `supportedGenerationMethods`에 `generateContent` 포함 모델만 노출 (§3과 동일) |
+| DeepSeek | 경로 정상 (`/v1` 접두사는 선택) | 일부 지역/망에서 타임아웃 잦음 → §2 타임아웃 설정과 에러 노출로 대응 |
+| LibreTranslate 공개 인스턴스 | **깨짐** — 키 없이 400 ("get an API key") | 요청 body에 `api_key` 포함 확인 + 서버 에러 메시지를 사용자에게 그대로 노출. 셀프호스팅 URL은 기존 CustomUrl 설정으로 이미 지원 |
+
+추가 (Unity Mono 환경):
+- 시작 시 1회 `ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;`
+  (OR 방식 — 덮어쓰면 다른 모드 요청을 깨뜨릴 수 있음). 구형 Mono에서 TLS 1.2
+  협상이 조용히 실패하는 사례 방지.
+- `ServicePointManager.Expect100Continue = false` 검토 — 비표준 서버(Papago/
+  Yandex)가 `Expect: 100-continue` 헤더를 잘못 처리하는 경우 대비.
 
 ## 범위 외
 
