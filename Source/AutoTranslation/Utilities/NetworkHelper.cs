@@ -13,12 +13,29 @@ namespace AutoTranslation.Utilities
         private const int DEFAULT_RETRIES = 5;
         private const int BASE_DELAY_MS = 5000;
         private const int RATE_LIMIT_DELAY_MS = 30000; // 30 seconds for 429 errors
+        public const int DEFAULT_TIMEOUT_MS = 30000;
 
-        public static string Post(string url, string body, Dictionary<string, string> headers = null, string contentType = "application/json", int maxRetries = DEFAULT_RETRIES)
+        static NetworkHelper()
+        {
+            try
+            {
+                // Unity Mono may default to TLS 1.0/1.1 only; OR-in TLS 1.2 (do not overwrite -
+                // overwriting could break other mods' requests)
+                ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
+                // Some non-standard servers (Papago/Yandex) mishandle Expect: 100-continue on POST
+                ServicePointManager.Expect100Continue = false;
+            }
+            catch (Exception e)
+            {
+                Log.Warning($"{AutoTranslation.LogPrefix} Failed to configure ServicePointManager: {e.Message}");
+            }
+        }
+
+        public static string Post(string url, string body, Dictionary<string, string> headers = null, string contentType = "application/json", int maxRetries = DEFAULT_RETRIES, int timeoutMs = DEFAULT_TIMEOUT_MS)
         {
             return ExecuteWithRetry(() =>
             {
-                var request = CreateRequest(url, "POST", headers);
+                var request = CreateRequest(url, "POST", headers, timeoutMs);
                 
                 // Only set ContentType if not already set by headers and contentType is not null
                 if (string.IsNullOrEmpty(request.ContentType) && !string.IsNullOrEmpty(contentType))
@@ -43,11 +60,11 @@ namespace AutoTranslation.Utilities
             }, maxRetries, url);
         }
 
-        public static string Get(string url, Dictionary<string, string> headers = null, int maxRetries = DEFAULT_RETRIES)
+        public static string Get(string url, Dictionary<string, string> headers = null, int maxRetries = DEFAULT_RETRIES, int timeoutMs = DEFAULT_TIMEOUT_MS)
         {
             return ExecuteWithRetry(() =>
             {
-                var request = CreateRequest(url, "GET", headers);
+                var request = CreateRequest(url, "GET", headers, timeoutMs);
                 return GetResponseText(request);
             }, maxRetries, url);
         }
@@ -99,11 +116,11 @@ namespace AutoTranslation.Utilities
             }
         }
 
-        private static WebRequest CreateRequest(string url, string method, Dictionary<string, string> headers)
+        private static WebRequest CreateRequest(string url, string method, Dictionary<string, string> headers, int timeoutMs)
         {
             var request = WebRequest.Create(url);
             request.Method = method;
-            request.Timeout = 30000; // 30s timeout
+            request.Timeout = timeoutMs;
             
             if (headers != null)
             {
@@ -159,6 +176,58 @@ namespace AutoTranslation.Utilities
                     return reader.ReadToEnd();
                 }
             }
+        }
+
+        /// <summary>
+        /// True when the failure indicates the endpoint could not be reached at all
+        /// (offline, DNS failure, refused connection) as opposed to a server-side error response.
+        /// </summary>
+        public static bool IsConnectionLevelFailure(WebException ex)
+        {
+            return ex.Status == WebExceptionStatus.NameResolutionFailure ||
+                   ex.Status == WebExceptionStatus.ConnectFailure ||
+                   ex.Status == WebExceptionStatus.Timeout ||
+                   ex.Status == WebExceptionStatus.ConnectionClosed ||
+                   ex.Status == WebExceptionStatus.ReceiveFailure ||
+                   ex.Status == WebExceptionStatus.SendFailure;
+        }
+
+        /// <summary>
+        /// Extracts a human-readable error from an exception, including the API error body
+        /// (e.g. Gemini's "API key not valid") when the server returned one.
+        /// </summary>
+        public static string ExtractErrorMessage(Exception e)
+        {
+            if (e is WebException webEx)
+            {
+                try
+                {
+                    if (webEx.Response is HttpWebResponse resp)
+                    {
+                        string body;
+                        using (var stream = resp.GetResponseStream())
+                        {
+                            if (stream == null) return $"HTTP {(int)resp.StatusCode} {resp.StatusCode}";
+                            using (var reader = new StreamReader(stream, Encoding.UTF8))
+                            {
+                                body = reader.ReadToEnd();
+                            }
+                        }
+
+                        var message = body.GetStringValueFromJson("message") ?? body.GetStringValueFromJson("error");
+                        var prefix = $"HTTP {(int)resp.StatusCode}";
+                        if (!string.IsNullOrEmpty(message)) return $"{prefix}: {message}";
+                        if (!string.IsNullOrEmpty(body)) return $"{prefix}: {body.Substring(0, Math.Min(200, body.Length))}";
+                        return prefix;
+                    }
+                }
+                catch
+                {
+                    // fall through to status-based message
+                }
+                return $"{webEx.Status}: {webEx.Message}";
+            }
+            return e.Message;
         }
     }
 }
