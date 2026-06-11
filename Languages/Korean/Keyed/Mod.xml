@@ -23,6 +23,7 @@
     <AT_Setting_APIKey>API 키:</AT_Setting_APIKey>
     <AT_Setting_Model>모델:</AT_Setting_Model>
     <AT_ChooseModel>모델 선택</AT_ChooseModel>
+    <AT_Setting_ManualModelEntry>또는 모델 이름 직접 입력:</AT_Setting_ManualModelEntry>
     <AT_Setting_CustomPrompt>사용자 지정 시스템 프롬프트: </AT_Setting_CustomPrompt>
     <AT_Setting_BaseURL>기본 URL: </AT_Setting_BaseURL>
     <AT_Setting_CustomBaseURL>사용자 지정 URL: </AT_Setting_CustomBaseURL>

@@ -23,6 +23,7 @@
     <AT_Setting_APIKey>API Key:</AT_Setting_APIKey>
     <AT_Setting_Model>Model:</AT_Setting_Model>
     <AT_ChooseModel>Choose Model</AT_ChooseModel>
+    <AT_Setting_ManualModelEntry>Or enter a model name manually:</AT_Setting_ManualModelEntry>
     <AT_Setting_CustomPrompt>Custom system prompt: </AT_Setting_CustomPrompt>
     <AT_Setting_BaseURL>Base URL: </AT_Setting_BaseURL>
     <AT_Setting_CustomBaseURL>Custom base URL: </AT_Setting_CustomBaseURL>

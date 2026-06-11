@@ -18,33 +18,26 @@ namespace AutoTranslation.Translators
 
         public override List<string> GetModels()
         {
-            try
+            var url = Helpers.CombineUrl(RequestURL, "models");
+            var headers = new Dictionary<string, string>();
+            if (!string.IsNullOrEmpty(APIKey))
             {
-                var url = Helpers.CombineUrl(RequestURL, "models");
-                var headers = new Dictionary<string, string>();
-                if (!string.IsNullOrEmpty(APIKey))
-                {
-                    headers.Add("Authorization", "Bearer " + APIKey);
-                }
-
-                var raw = NetworkHelper.Get(url, headers, timeoutMs: TimeoutMs);
-                
-                // Try standard OpenAI format
-                var models = raw.GetStringValuesFromJson("id");
-                
-                // Fallback for some local servers that might return just a list
-                if (models == null || models.Count == 0)
-                {
-                    models = raw.GetStringValuesFromJson("name");
-                }
-
-                return models ?? new List<string>();
+                headers.Add("Authorization", "Bearer " + APIKey);
             }
-            catch (System.Exception)
+
+            // Exceptions propagate: the base class extracts the API error for the settings UI
+            var raw = NetworkHelper.Get(url, headers, timeoutMs: TimeoutMs);
+
+            // Try standard OpenAI format
+            var models = raw.GetStringValuesFromJson("id");
+
+            // Fallback for some local servers that might return just a list
+            if (models == null || models.Count == 0)
             {
-                // Silently return empty list, base class will handle logging
-                return new List<string>();
+                models = raw.GetStringValuesFromJson("name");
             }
+
+            return models ?? new List<string>();
         }
 
         public override void Prepare()

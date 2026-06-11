@@ -16,23 +16,14 @@ namespace AutoTranslation.Translators
 
         public override List<string> GetModels()
         {
-            try
+            var headers = new Dictionary<string, string>
             {
-                var headers = new Dictionary<string, string>
-                {
-                    { "Authorization", "Bearer " + APIKey }
-                };
+                { "Authorization", "Bearer " + APIKey }
+            };
 
-                var raw = NetworkHelper.Get(Helpers.CombineUrl(RequestURL, "models"), headers, timeoutMs: TimeoutMs);
-                var models = raw.GetStringValuesFromJson("id");
-
-                return models;
-            }
-            catch (Exception e)
-            {
-                // Messages.Message("AT_Message_FailedToGetModels".Translate() + e.Message, MessageTypeDefOf.NegativeEvent);
-                return null;
-            }
+            // Exceptions propagate: the base class extracts the API error for the settings UI
+            var raw = NetworkHelper.Get(Helpers.CombineUrl(RequestURL, "models"), headers, timeoutMs: TimeoutMs);
+            return raw.GetStringValuesFromJson("id");
         }
 
         protected override string GetResponseUnsafe(string text, string prompt)
