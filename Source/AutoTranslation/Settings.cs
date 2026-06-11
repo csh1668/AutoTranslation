@@ -409,7 +409,9 @@ namespace AutoTranslation
 
             ls.GapLine();
             string status;
-            if (TranslatorManager._queue.Count > 0)
+            if (NetworkStateMonitor.IsOpen)
+                status = "AT_Status_NetworkPaused".Translate();
+            else if (TranslatorManager._queue.Count > 0)
                 status = "AT_Status1".Translate();
             else if (TranslatorManager.workCnt > 20) 
                 status = "AT_Status2".Translate();

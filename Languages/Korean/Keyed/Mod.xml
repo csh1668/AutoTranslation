@@ -35,6 +35,9 @@
     <AT_Status1>번역이 진행 중입니다. 게임은 정상적으로 플레이할 수 있습니다.</AT_Status1>
     <AT_Status2>번역이 완료되었습니다! 완전한 적용을 위해 Def 캐시 초기화나 게임 재시작을 권장합니다.</AT_Status2>
     <AT_Status3>번역이 완료되었습니다!</AT_Status3>
+    <AT_Status_NetworkPaused>일시정지됨 - 네트워크에 연결할 수 없습니다. 자동으로 재시도합니다.</AT_Status_NetworkPaused>
+    <AT_Message_NetworkPaused>자동 번역: 네트워크에 연결할 수 없어 번역이 일시정지되었습니다. 자동으로 재시도합니다.</AT_Message_NetworkPaused>
+    <AT_Message_NetworkResumed>자동 번역: 네트워크가 복구되어 번역이 재개되었습니다.</AT_Message_NetworkResumed>
     <AT_Setting_CurStatus>현재 상태: </AT_Setting_CurStatus>
     <AT_Setting_Cached>캐시된 번역: </AT_Setting_Cached>
     <AT_Setting_NotYet>남은 번역: </AT_Setting_NotYet>

@@ -35,6 +35,9 @@
     <AT_Status1>Translation is in progress. You can continue playing normally.</AT_Status1>
     <AT_Status2>Translation complete! It's recommended to reset Def caches or restart the game for full application.</AT_Status2>
     <AT_Status3>Translation complete!</AT_Status3>
+    <AT_Status_NetworkPaused>Paused - network unreachable. Will retry automatically.</AT_Status_NetworkPaused>
+    <AT_Message_NetworkPaused>Auto Translation: network unreachable - translation paused. Will retry automatically.</AT_Message_NetworkPaused>
+    <AT_Message_NetworkResumed>Auto Translation: network recovered - translation resumed.</AT_Message_NetworkResumed>
     <AT_Setting_CurStatus>Current status: </AT_Setting_CurStatus>
     <AT_Setting_Cached>Cached translations: </AT_Setting_Cached>
     <AT_Setting_NotYet>Remaining translations: </AT_Setting_NotYet>
