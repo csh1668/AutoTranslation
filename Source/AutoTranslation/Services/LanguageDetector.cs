@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Verse;
@@ -47,29 +48,55 @@ namespace AutoTranslation.Services
         /// </summary>
         /// <param name="text">분석할 텍스트</param>
         /// <returns>감지된 언어</returns>
+        // Vietnamese diacritic characters (both cases) for the allocation-free scanner below
+        private static readonly HashSet<char> VietnameseChars = BuildVietnameseChars();
+
+        private static HashSet<char> BuildVietnameseChars()
+        {
+            const string lower = "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềấếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ";
+            var set = new HashSet<char>();
+            foreach (var c in lower)
+            {
+                set.Add(c);
+                set.Add(char.ToUpperInvariant(c));
+            }
+            return set;
+        }
+
         public static DetectedLanguage Detect(string text)
         {
             if (string.IsNullOrWhiteSpace(text))
                 return DetectedLanguage.Unknown;
 
-            // 공백 제거하고 실제 문자만 카운트
-            var trimmedText = Regex.Replace(text, @"\s+", "");
-            if (trimmedText.Length < 2)
-                return DetectedLanguage.Unknown;
+            // Single allocation-free pass. The previous implementation ran 10 regexes over
+            // the full text and allocated a Match object per character hit - measured as the
+            // dominant per-string cost of the whole def scan.
+            int totalChars = 0;
+            int koreanCount = 0, japaneseCount = 0, chineseCount = 0, cyrillicCount = 0, arabicCount = 0,
+                thaiCount = 0, hebrewCount = 0, greekCount = 0, vietnameseCount = 0, latinCount = 0;
 
-            int totalChars = trimmedText.Length;
-            
-            // 각 언어별 문자 수 카운트 (우선순위: 고유 문자 체계가 있는 언어)
-            int koreanCount = KoreanRegex.Matches(text).Count;
-            int japaneseCount = JapaneseRegex.Matches(text).Count;
-            int chineseCount = ChineseRegex.Matches(text).Count;
-            int cyrillicCount = CyrillicRegex.Matches(text).Count; // Russian/Ukrainian
-            int arabicCount = ArabicRegex.Matches(text).Count;
-            int thaiCount = ThaiRegex.Matches(text).Count;
-            int hebrewCount = HebrewRegex.Matches(text).Count;
-            int greekCount = GreekRegex.Matches(text).Count;
-            int vietnameseCount = VietnameseRegex.Matches(text).Count;
-            int latinCount = LatinRegex.Matches(text).Count;
+            for (int i = 0; i < text.Length; i++)
+            {
+                var c = text[i];
+                if (char.IsWhiteSpace(c)) continue;
+                totalChars++;
+
+                int ci = c;
+                // Same Unicode ranges as the old regexes
+                if ((ci >= 0xAC00 && ci <= 0xD7A3) || (ci >= 0x1100 && ci <= 0x11FF) || (ci >= 0x3130 && ci <= 0x318F)) koreanCount++;
+                if ((ci >= 0x3040 && ci <= 0x309F) || (ci >= 0x30A0 && ci <= 0x30FF) || (ci >= 0x31F0 && ci <= 0x31FF)) japaneseCount++;
+                if ((ci >= 0x4E00 && ci <= 0x9FFF) || (ci >= 0x3400 && ci <= 0x4DBF)) chineseCount++;
+                if (ci >= 0x0400 && ci <= 0x04FF) cyrillicCount++;
+                if ((ci >= 0x0600 && ci <= 0x06FF) || (ci >= 0x0750 && ci <= 0x077F)) arabicCount++;
+                if (ci >= 0x0E00 && ci <= 0x0E7F) thaiCount++;
+                if (ci >= 0x0590 && ci <= 0x05FF) hebrewCount++;
+                if ((ci >= 0x0370 && ci <= 0x03FF) || (ci >= 0x1F00 && ci <= 0x1FFF)) greekCount++;
+                if (VietnameseChars.Contains(c)) vietnameseCount++;
+                if ((ci >= 'a' && ci <= 'z') || (ci >= 'A' && ci <= 'Z') || (ci >= 0x00C0 && ci <= 0x00FF)) latinCount++;
+            }
+
+            if (totalChars < 2)
+                return DetectedLanguage.Unknown;
 
             // 비율 계산 (최소 20% 이상이면 해당 언어로 판단)
             const double threshold = 0.2;
@@ -169,18 +196,28 @@ namespace AutoTranslation.Services
             if (string.IsNullOrWhiteSpace(text))
                 return false;
 
-            // 현재 활성 언어 가져오기
-            var activeLanguage = LanguageDatabase.activeLanguage;
-            if (activeLanguage == null)
-                return false;
+            string targetLanguageFolderName;
 
-            // 기본 언어(영어)인 경우 언어 감지 불필요
-            if (activeLanguage == LanguageDatabase.defaultLanguage)
-                return false;
+            if (Utilities.Helpers.HasLanguageOverride())
+            {
+                // The user picked an explicit target - judge against it, not the game language
+                targetLanguageFolderName = Utilities.Helpers.EffectiveLanguageFolder();
+            }
+            else
+            {
+                // 현재 활성 언어 가져오기
+                var activeLanguage = LanguageDatabase.activeLanguage;
+                if (activeLanguage == null)
+                    return false;
 
-            // 목표 언어 폴더 이름
-            var targetLanguageFolderName = activeLanguage.folderName;
-            
+                // 기본 언어(영어)인 경우 언어 감지 불필요
+                if (activeLanguage == LanguageDatabase.defaultLanguage)
+                    return false;
+
+                // 목표 언어 폴더 이름
+                targetLanguageFolderName = activeLanguage.folderName;
+            }
+
             // 라틴 문자권 언어(영어, 독일어, 프랑스어 등)끼리는 문자 체계가 동일하여 
             // 텍스트 분석만으로 언어를 명확히 구분하기 어렵습니다. (오탐 가능성 높음)
             // 따라서 언어 체계가 완전히 다른 경우(영어 <-> 한국어/중국어 등)에만

@@ -13,12 +13,12 @@ namespace AutoTranslation.Translators
     public class Translator_DeepL : Translator_BaseTraditional
     {
         private static readonly System.Text.StringBuilder sb = new System.Text.StringBuilder(1024);
-        private string _cachedTranslateLanguage;
         protected virtual string url => $"https://api-free.deepl.com/v2/translate";
 
         public override string Name => "DeepL";
         public override bool RequiresKey => true;
-        public override string TranslateLanguage => _cachedTranslateLanguage ?? (_cachedTranslateLanguage = GetTranslateLanguage());
+        // Not cached: the user can change the target language override at runtime
+        public override string TranslateLanguage => GetTranslateLanguage();
 
         public TranslatorSettings_DeepL Config
         {
@@ -72,11 +72,19 @@ namespace AutoTranslation.Translators
                 var response = NetworkHelper.Post(url, body, headers, "application/json", skipRetry ? 0 : 3);
                 
                 var translatedProtected = Parse(response, out var detectedLang);
-                
+
+                Config.UsageCharacters += text.Length;
+                global::AutoTranslation.Settings.UsageDirty = true;
+
                 // Restore placeholders
                 var (restoredText, allRestored) = translatedProtected.RestorePlaceholders(placeholders);
-                
-                translated = detectedLang == TranslateLanguage ? text : restoredText;
+
+                // detected_source_language is always regionless uppercase (e.g. "PT"), so
+                // compare base codes case-insensitively - a full-string compare could never
+                // match "PT-PT"/"PT-BR", and override fallback codes are lowercase ("lv")
+                var sameLanguage = !string.IsNullOrEmpty(detectedLang) &&
+                                   string.Equals(detectedLang.Split('-')[0], TranslateLanguage.Split('-')[0], StringComparison.OrdinalIgnoreCase);
+                translated = sameLanguage ? text : restoredText;
                 
                 if (!allRestored)
                 {
@@ -99,6 +107,8 @@ namespace AutoTranslation.Translators
 
         public override bool SupportsCurrentLanguage()
         {
+            if (Helpers.HasLanguageOverride()) return true;
+
             var lang = LanguageDatabase.activeLanguage?.LegacyFolderName;
             if (lang == null)
             {
@@ -106,7 +116,7 @@ namespace AutoTranslation.Translators
                 return false;
             }
 
-            return _languageMap.ContainsKey(lang);
+            return _languageMap.ContainsKey(lang.NormalizeLanguageFolder());
         }
 
         protected APIKeyRotater rotater = null;
@@ -129,19 +139,13 @@ namespace AutoTranslation.Translators
 
         private static string GetTranslateLanguage()
         {
-            var lang = LanguageDatabase.activeLanguage?.LegacyFolderName;
-            if (lang == null)
+            var res = Helpers.ResolveTargetLanguage(_languageMap);
+            if (res == null)
             {
-                Log.Warning(AutoTranslation.LogPrefix + "activeLanguage was null");
-                return "EN";
+                Log.Error(AutoTranslation.LogPrefix + $"Unsupported language: {LanguageDatabase.activeLanguage?.LegacyFolderName ?? "(null)"} in DeepL, Please change to another translator.");
+                res = "EN-US";
             }
-
-            lang = lang.Split('_').First();
-            if (_languageMap.TryGetValue(lang, out var result))
-                return result;
-
-            Log.Error(AutoTranslation.LogPrefix + $"Unsupported language: {lang} in DeepL, Please change to another translator.");
-            return "EN";
+            return res;
         }
 
         private static readonly Dictionary<string, string> _languageMap = new Dictionary<string, string>
@@ -171,7 +175,8 @@ namespace AutoTranslation.Translators
             ["Swedish"] = "SV",
             ["Turkish"] = "TR",
             ["Ukrainian"] = "UK",
-            ["English"] = "EN"
+            // Regionless "EN" as a TARGET is deprecated by DeepL - use EN-US
+            ["English"] = "EN-US"
         };
         
         public override void DrawSettings(Listing_Standard ls)
@@ -200,6 +205,23 @@ namespace AutoTranslation.Translators
                         : "AT_Setting_DeepLProKeyOnFree".Translate());
                     GUI.color = prevColor;
                 }
+            }
+
+            ls.GapLine();
+            ls.Label("AT_Setting_CostTracking".Translate());
+            ls.Label("AT_Setting_UsageCharacters".Translate(Config.UsageCharacters.ToString("N0")));
+
+            var priceRect = ls.GetRect(Text.LineHeight + 4f);
+            Widgets.Label(priceRect.LeftPart(0.6f), "AT_Setting_PricePerMChars".Translate());
+            Config.PricePerMChars = Helpers.DecimalTextField(priceRect.RightPart(0.38f), $"{Name}_PricePerMChars", Config.PricePerMChars);
+
+            var cost = Config.UsageCharacters / 1_000_000.0 * Config.PricePerMChars;
+            ls.Label("AT_Setting_EstimatedCost".Translate(cost.ToString("F4")));
+
+            if (ls.ButtonText("AT_Setting_ResetUsage".Translate()))
+            {
+                Config.UsageCharacters = 0;
+                global::AutoTranslation.Settings.UsageDirty = true;
             }
         }
     }

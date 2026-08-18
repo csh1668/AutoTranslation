@@ -25,12 +25,35 @@
     <AT_ChooseModel>모델 선택</AT_ChooseModel>
     <AT_Setting_ManualModelEntry>또는 모델 이름 직접 입력:</AT_Setting_ManualModelEntry>
     <AT_Setting_LibreTranslateKeyNotice>참고: 공식 libretranslate.com 인스턴스는 이제 유료 API 키가 필요합니다 (portal.libretranslate.com). 셀프호스팅 인스턴스는 키가 필요 없습니다.</AT_Setting_LibreTranslateKeyNotice>
+    <AT_Setting_EnableAutoTranslation>자동 번역 사용 (기본값: 켬)</AT_Setting_EnableAutoTranslation>
+    <AT_Setting_EnableAutoTranslation_Tooltip>끄면 네트워크 요청을 전혀 하지 않고, 이전에 캐시된 번역만 적용합니다. 오프라인이거나 번역을 중단하고 싶을 때 유용합니다. 게임 재시작 후 완전히 적용됩니다.</AT_Setting_EnableAutoTranslation_Tooltip>
+    <AT_Setting_AutoTranslationOff>캐시된 번역만 사용합니다</AT_Setting_AutoTranslationOff>
+    <AT_Setting_AutoTranslateNewMods>새로 추가된 모드 자동 번역 (기본값: 켬)</AT_Setting_AutoTranslateNewMods>
+    <AT_Setting_AutoTranslateNewMods_Tooltip>끄면 이후 추가되는 모드는 기본적으로 번역에서 제외됩니다. 대상 모드 탭에서 수동으로 켤 수 있습니다.</AT_Setting_AutoTranslateNewMods_Tooltip>
+    <AT_Setting_TargetLanguageOverride>번역 대상 언어 직접 지정 (비워두면 게임 언어 따름):</AT_Setting_TargetLanguageOverride>
+    <AT_Setting_TargetLanguageOverride_Tooltip>게임의 활성 언어 대신 번역 대상 언어를 직접 지정합니다. 영어로 된 언어 이름(예: "Latvian")을 입력하거나 드롭다운에서 선택하세요. 비워두면 자동 감지합니다.</AT_Setting_TargetLanguageOverride_Tooltip>
+    <AT_Setting_LanguageAuto>(자동 - 게임 언어 따름)</AT_Setting_LanguageAuto>
+
     <AT_Setting_DeepLFreeKeyOnPro>DeepL Free 키(":fx"로 끝남)로 보입니다. "DeepL Pro" 대신 "DeepL" 번역기를 선택해주세요.</AT_Setting_DeepLFreeKeyOnPro>
     <AT_Setting_DeepLProKeyOnFree>DeepL Pro 키로 보입니다. "DeepL" 대신 "DeepL Pro" 번역기를 선택해주세요.</AT_Setting_DeepLProKeyOnFree>
     <AT_Setting_CustomPrompt>사용자 지정 시스템 프롬프트: </AT_Setting_CustomPrompt>
     <AT_Setting_BaseURL>기본 URL: </AT_Setting_BaseURL>
     <AT_Setting_CustomBaseURL>사용자 지정 URL: </AT_Setting_CustomBaseURL>
     <AT_Setting_Reset>기본값으로 초기화</AT_Setting_Reset>
+
+    <!-- Claude Code CLI -->
+    <AT_Setting_ClaudeCodeNotice>로컬에 설치된 Claude Code CLI를 CLI의 자체 로그인(구독)으로 사용합니다. API 키는 필요 없지만, CLI가 설치·로그인되어 있어야 합니다.</AT_Setting_ClaudeCodeNotice>
+    <AT_Setting_ClaudeCodePath>CLI 실행 파일 경로 (비워두면 PATH의 "claude" 사용):</AT_Setting_ClaudeCodePath>
+
+    <!-- Cost tracking -->
+    <AT_Setting_CostTracking>::비용 추적::</AT_Setting_CostTracking>
+    <AT_Setting_UsageTokens>사용한 토큰 - 입력: {0}, 출력: {1}</AT_Setting_UsageTokens>
+    <AT_Setting_UsageCharacters>전송한 문자 수: {0}</AT_Setting_UsageCharacters>
+    <AT_Setting_PriceInputPerMTokens>입력 토큰 100만 개당 가격 (USD):</AT_Setting_PriceInputPerMTokens>
+    <AT_Setting_PriceOutputPerMTokens>출력 토큰 100만 개당 가격 (USD):</AT_Setting_PriceOutputPerMTokens>
+    <AT_Setting_PricePerMChars>문자 100만 개당 가격 (USD):</AT_Setting_PricePerMChars>
+    <AT_Setting_EstimatedCost>예상 비용: ${0}</AT_Setting_EstimatedCost>
+    <AT_Setting_ResetUsage>사용량 초기화</AT_Setting_ResetUsage>
     <AT_Setting_NoTranslatorError>번역기를 찾을 수 없습니다. 설정을 확인해주세요.</AT_Setting_NoTranslatorError>
 
     <AT_Setting_Misc>::기타 설정::</AT_Setting_Misc>
@@ -62,6 +85,38 @@
     <AT_Message_RestartWork>번역을 재시작합니다... (완전히 다시 하려면 먼저 캐시를 삭제한 후 재시작하세요)</AT_Message_RestartWork>
     <AT_Message_RestartFailed>재시작에 실패했습니다. API 키와 모델을 확인해주세요.</AT_Message_RestartFailed>
     <AT_Message_FailedToGetModels>모델 목록을 가져오는데 실패했습니다. API 키를 확인해주세요: </AT_Message_FailedToGetModels>
+
+    <!-- Gist 공유 -->
+    <AT_Gist_SectionTitle>::번역 공유 (Gist)::</AT_Gist_SectionTitle>
+    <AT_Gist_UploadButton>내 번역 업로드</AT_Gist_UploadButton>
+    <AT_Gist_Uploading>업로드 중...</AT_Gist_Uploading>
+    <AT_Gist_DownloadLabel>공유받은 번역 다운로드 (Gist URL 또는 ID):</AT_Gist_DownloadLabel>
+    <AT_Gist_DownloadButton>다운로드</AT_Gist_DownloadButton>
+    <AT_Gist_Downloading>다운로드 중...</AT_Gist_Downloading>
+    <AT_Gist_UploadSuccess>번역이 업로드되었습니다!</AT_Gist_UploadSuccess>
+    <AT_Gist_UploadFailed>업로드 실패</AT_Gist_UploadFailed>
+    <AT_Gist_CopiedToClipboard>URL이 클립보드에 복사되었습니다</AT_Gist_CopiedToClipboard>
+    <AT_Gist_DownloadFailed>다운로드 실패</AT_Gist_DownloadFailed>
+    <AT_Gist_PreviewTitle>공유 번역 정보</AT_Gist_PreviewTitle>
+    <AT_Gist_TargetLanguage>대상 언어</AT_Gist_TargetLanguage>
+    <AT_Gist_Translator>번역기</AT_Gist_Translator>
+    <AT_Gist_Model>모델</AT_Gist_Model>
+    <AT_Gist_Date>날짜</AT_Gist_Date>
+    <AT_Gist_TranslationCount>번역 수</AT_Gist_TranslationCount>
+    <AT_Gist_Confirm>계속</AT_Gist_Confirm>
+    <AT_Gist_MergeTitle>공유 번역 병합</AT_Gist_MergeTitle>
+    <AT_Gist_MergeInfo>내 번역과 다른 항목</AT_Gist_MergeInfo>
+    <AT_Gist_SelectAll>전체 선택</AT_Gist_SelectAll>
+    <AT_Gist_DeselectAll>전체 해제</AT_Gist_DeselectAll>
+    <AT_Gist_SelectNewOnly>새 항목만 (내 번역 유지)</AT_Gist_SelectNewOnly>
+    <AT_Gist_MergeSelected>선택 항목 병합</AT_Gist_MergeSelected>
+    <AT_Gist_NoDifferences>내 번역과 다른 항목이 없습니다.</AT_Gist_NoDifferences>
+    <AT_Gist_Key>키</AT_Gist_Key>
+    <AT_Gist_LocalTranslation>내 번역</AT_Gist_LocalTranslation>
+    <AT_Gist_RemoteTranslation>공유 번역</AT_Gist_RemoteTranslation>
+    <AT_Gist_NewTranslation>(새 번역)</AT_Gist_NewTranslation>
+    <AT_Gist_MergeSuccess>병합 완료</AT_Gist_MergeSuccess>
+    <AT_Gist_AppliedLive>게임에 즉시 적용</AT_Gist_AppliedLive>
 
     <!-- 탭 이름 -->
     <AT_Tab_General>일반</AT_Tab_General>

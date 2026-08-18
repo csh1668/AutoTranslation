@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml;
+using UnityEngine;
+using Verse;
 
 namespace AutoTranslation.Utilities
 {
@@ -52,18 +55,76 @@ namespace AutoTranslation.Utilities
         public static string[] Tokenize(this string str) =>
             str.Split(new[] { ".\n", ". " }, StringSplitOptions.RemoveEmptyEntries);
 
+        // (?:\\.|[^"\\])* is the proper JSON string body: an escape pair or any non-quote,
+        // non-backslash char - the old [^"] class could swallow the backslash of a trailing \\
+        private const string JsonStringBodyPattern = "((?:\\\\.|[^\"\\\\])*)";
+
         public static string GetStringValueFromJson(this string json, string key)
         {
-            var pattern = $"\"{key}\"\\s*:\\s*\"((?:\\\\\"|[^\"])*)\"";
+            var pattern = $"\"{key}\"\\s*:\\s*\"{JsonStringBodyPattern}\"";
             var match = Regex.Match(json, pattern);
-            return match.Success ? match.Groups[1].Value.Replace("\\\"", "\"") : null;
+            return match.Success ? match.Groups[1].Value.UnescapeJsonString() : null;
         }
 
         public static List<string> GetStringValuesFromJson(this string json, string key)
         {
-            var pattern = $"\"{key}\"\\s*:\\s*\"((?:\\\\\"|[^\"])*)\"";
+            var pattern = $"\"{key}\"\\s*:\\s*\"{JsonStringBodyPattern}\"";
             var matches = Regex.Matches(json, pattern);
-            return matches.Cast<Match>().Select(match => match.Groups[1].Value.Replace("\\\"", "\"")).ToList();
+            return matches.Cast<Match>().Select(match => match.Groups[1].Value.UnescapeJsonString()).ToList();
+        }
+
+        public static long? GetLongValueFromJson(this string json, string key)
+        {
+            var match = Regex.Match(json, $"\"{key}\"\\s*:\\s*(\\d+)");
+            return match.Success && long.TryParse(match.Groups[1].Value, out var v) ? v : (long?)null;
+        }
+
+        /// <summary>
+        /// Decodes JSON string escapes (\n, \t, \", \\, \uXXXX, ...). Unknown escapes are kept as-is.
+        /// </summary>
+        public static string UnescapeJsonString(this string input)
+        {
+            if (string.IsNullOrEmpty(input) || input.IndexOf('\\') < 0) return input;
+
+            var sb = new StringBuilder(input.Length);
+            for (int i = 0; i < input.Length; i++)
+            {
+                var c = input[i];
+                if (c != '\\' || i == input.Length - 1)
+                {
+                    sb.Append(c);
+                    continue;
+                }
+
+                var next = input[++i];
+                switch (next)
+                {
+                    case '"': sb.Append('"'); break;
+                    case '\\': sb.Append('\\'); break;
+                    case '/': sb.Append('/'); break;
+                    case 'b': sb.Append('\b'); break;
+                    case 'f': sb.Append('\f'); break;
+                    case 'n': sb.Append('\n'); break;
+                    case 'r': sb.Append('\r'); break;
+                    case 't': sb.Append('\t'); break;
+                    case 'u':
+                        if (i + 4 < input.Length &&
+                            ushort.TryParse(input.Substring(i + 1, 4), NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out var code))
+                        {
+                            sb.Append((char)code);
+                            i += 4;
+                        }
+                        else
+                        {
+                            sb.Append('\\').Append(next);
+                        }
+                        break;
+                    default:
+                        sb.Append('\\').Append(next);
+                        break;
+                }
+            }
+            return sb.ToString();
         }
 
         #region XmlHelpers
@@ -253,6 +314,150 @@ namespace AutoTranslation.Utilities
         /// <summary>
         /// Validates that the translated text has the same placeholder count as the original.
         /// </summary>
+        /// <summary>
+        /// Strips custom-language suffixes from a language folder name:
+        /// "Russian-SK" / "Korean_..." both resolve to the base language name.
+        /// </summary>
+        public static string NormalizeLanguageFolder(this string folder)
+        {
+            if (string.IsNullOrEmpty(folder)) return folder;
+            return folder.Split('_')[0].Split('-')[0].Trim();
+        }
+
+        /// <summary>
+        /// The language identity translations should target: the user's manual override
+        /// if set, otherwise the active language's folder name.
+        /// </summary>
+        public static string EffectiveLanguageFolder()
+        {
+            var overrideLang = global::AutoTranslation.Settings.TargetLanguageOverride;
+            if (!string.IsNullOrWhiteSpace(overrideLang)) return overrideLang.Trim();
+            return LanguageDatabase.activeLanguage?.LegacyFolderName;
+        }
+
+        public static bool HasLanguageOverride()
+        {
+            return !string.IsNullOrWhiteSpace(global::AutoTranslation.Settings.TargetLanguageOverride);
+        }
+
+        /// <summary>
+        /// Resolves the target language code for a translator's language map.
+        /// Tries the normalized name, then the raw name; a manual override that matches
+        /// neither falls back to the shared name-to-code table (so "Latvian" works even
+        /// on engines whose own map lacks it), and finally passes through verbatim so
+        /// raw codes like "lv" keep working. Returns null when nothing resolves.
+        /// </summary>
+        public static string ResolveTargetLanguage(Dictionary<string, string> languageMap)
+        {
+            var folder = EffectiveLanguageFolder();
+            if (string.IsNullOrEmpty(folder)) return null;
+
+            if (languageMap.TryGetValue(folder.NormalizeLanguageFolder(), out var mapped)) return mapped;
+            if (languageMap.TryGetValue(folder, out mapped)) return mapped;
+
+            if (HasLanguageOverride())
+            {
+                if (KnownLanguageCodes.TryGetValue(folder.NormalizeLanguageFolder(), out var code)) return code;
+                return folder;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Language names selectable in the target-language dropdown, sorted.
+        /// </summary>
+        public static List<string> KnownLanguageNames => KnownLanguageCodes.Keys.OrderBy(x => x).ToList();
+
+        // Shared name -> ISO code fallback used when a translator's own map lacks the language.
+        // Names follow RimWorld's language folder naming so they also hit the engine maps directly.
+        private static readonly Dictionary<string, string> KnownLanguageCodes = new Dictionary<string, string>
+        {
+            ["Albanian"] = "sq",
+            ["Arabic"] = "ar",
+            ["Azerbaijani"] = "az",
+            ["Basque"] = "eu",
+            ["Belarusian"] = "be",
+            ["Bulgarian"] = "bg",
+            ["Catalan"] = "ca",
+            ["ChineseSimplified"] = "zh-CN",
+            ["ChineseTraditional"] = "zh-TW",
+            ["Croatian"] = "hr",
+            ["Czech"] = "cs",
+            ["Danish"] = "da",
+            ["Dutch"] = "nl",
+            ["English"] = "en",
+            ["Esperanto"] = "eo",
+            ["Estonian"] = "et",
+            ["Finnish"] = "fi",
+            ["French"] = "fr",
+            ["Georgian"] = "ka",
+            ["German"] = "de",
+            ["Greek"] = "el",
+            ["Hebrew"] = "he",
+            ["Hindi"] = "hi",
+            ["Hungarian"] = "hu",
+            ["Indonesian"] = "id",
+            ["Italian"] = "it",
+            ["Japanese"] = "ja",
+            ["Kazakh"] = "kk",
+            ["Korean"] = "ko",
+            ["Latvian"] = "lv",
+            ["Lithuanian"] = "lt",
+            ["Macedonian"] = "mk",
+            ["Malay"] = "ms",
+            ["Mongolian"] = "mn",
+            ["Norwegian"] = "no",
+            ["Persian"] = "fa",
+            ["Polish"] = "pl",
+            ["Portuguese"] = "pt",
+            ["PortugueseBrazilian"] = "pt-BR",
+            ["Romanian"] = "ro",
+            ["Russian"] = "ru",
+            ["Serbian"] = "sr",
+            ["Slovak"] = "sk",
+            ["Slovenian"] = "sl",
+            ["Spanish"] = "es",
+            ["SpanishLatin"] = "es",
+            ["Swedish"] = "sv",
+            ["Thai"] = "th",
+            ["Turkish"] = "tr",
+            ["Ukrainian"] = "uk",
+            ["Vietnamese"] = "vi"
+        };
+
+        // Persistent per-field text buffers for decimal input. RimWorld's TextFieldNumeric
+        // re-parses and re-formats every frame, which eats an in-progress "." (typing "0.5"
+        // becomes impossible). Keeping the raw string across frames and parsing on the side
+        // lets intermediate states like "0." live until the user finishes typing.
+        private static readonly Dictionary<string, string> _decimalBuffers = new Dictionary<string, string>();
+
+        public static float DecimalTextField(Rect rect, string bufferKey, float value)
+        {
+            if (!_decimalBuffers.TryGetValue(bufferKey, out var buffer))
+            {
+                buffer = value == 0f ? "0" : value.ToString("0.######", CultureInfo.InvariantCulture);
+            }
+
+            var typed = Widgets.TextField(rect, buffer);
+            // Allow only digits and one decimal separator; ',' is accepted and treated as '.'
+            typed = Regex.Replace(typed ?? string.Empty, @"[^0-9.,]", "");
+            _decimalBuffers[bufferKey] = typed;
+
+            var normalized = typed.Replace(',', '.');
+            if (float.TryParse(normalized, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) && parsed >= 0f)
+            {
+                return parsed;
+            }
+            // Empty or partial input like "." keeps the last committed value
+            return string.IsNullOrEmpty(normalized) || normalized == "." ? 0f : value;
+        }
+
+        public static void ClearDecimalBuffer(string bufferKey)
+        {
+            _decimalBuffers.Remove(bufferKey);
+        }
+
         public static bool ValidatePlaceholderCount(this string original, string translated)
         {
             var originalCurly = Regex.Matches(original, @"\{[^\}]*\}").Count;

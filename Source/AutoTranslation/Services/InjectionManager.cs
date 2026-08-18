@@ -100,6 +100,8 @@ namespace AutoTranslation.Services
 
         internal static void InjectMissingDefInjection()
         {
+            // if (LanguageDatabase.activeLanguage == LanguageDatabase.defaultLanguage && !Helpers.HasLanguageOverride()) return;
+
             if (defInjectedMissing.Count == 0)
             {
                 DefInjectionUtilityCustom.FindMissingDefInjection((@params =>
@@ -225,9 +227,213 @@ namespace AutoTranslation.Services
             }
         }
 
+        #region Restart-free reapplication
+
+        // Reverse index: cache key -> injection params. Built ONCE lazily (a linear scan per
+        // merged key would be O(keys x params) - 10s+ in big modpacks); dictionary lookups
+        // make applying shared/edited translations effectively instant.
+        private sealed class ReapplyTarget
+        {
+            public DefInjectionUtilityCustom.DefInjectionUntranslatedParams defParam;
+            public KeyedUtility.KeyedReplacementParams keyedParam;
+            public string collectionElement; // set when the key maps to one element of a collection param
+            public bool isRuleString;        // "key->value" grammar strings need re-formatting
+        }
+
+        private static Dictionary<string, List<ReapplyTarget>> _reapplyIndex;
+        private static readonly object _reapplyIndexLock = new object();
+
+        private static string CacheKeyFor(string original, string additionalKey, string modId)
+        {
+            var prefix = string.IsNullOrEmpty(modId) ? $"{TranslationCacheManager.LEGACY_MOD_ID}:" : $"{modId}:";
+            return prefix + TranslatorManager.NormalizeKey(original + additionalKey);
+        }
+
+        private static Dictionary<string, List<ReapplyTarget>> BuildReapplyIndex()
+        {
+            var index = new Dictionary<string, List<ReapplyTarget>>();
+
+            void Add(string key, ReapplyTarget target)
+            {
+                if (!index.TryGetValue(key, out var list)) index[key] = list = new List<ReapplyTarget>(1);
+                list.Add(target);
+            }
+
+            foreach (var p in defInjectedMissing)
+            {
+                var modId = p.def?.modContentPack?.PackageId ?? string.Empty;
+                if (!p.isCollection)
+                {
+                    Add(CacheKeyFor(p.original, string.Empty, modId), new ReapplyTarget { defParam = p });
+                    continue;
+                }
+
+                foreach (var original in p.originalCollection)
+                {
+                    if (original.Contains("->"))
+                    {
+                        // Mirrors the queue's rule-string key derivation
+                        var token = original.Split(new[] { "->" }, StringSplitOptions.None);
+                        var (value, placeHolders) = token[1].ToFormatString();
+                        Add(CacheKeyFor(value, token[0] + placeHolders.ToLineList(), modId),
+                            new ReapplyTarget { defParam = p, collectionElement = original, isRuleString = true });
+                    }
+                    else
+                    {
+                        Add(CacheKeyFor(original, string.Empty, modId),
+                            new ReapplyTarget { defParam = p, collectionElement = original });
+                    }
+                }
+            }
+
+            foreach (var p in keyedMissing)
+            {
+                Add(CacheKeyFor(p.value.value, p.key, p.mod?.PackageId ?? string.Empty),
+                    new ReapplyTarget { keyedParam = p });
+            }
+
+            return index;
+        }
+
+        /// <summary>
+        /// Applies updated translations (cache key -> new translation) to the LIVE game state
+        /// without a restart: matching def injections are re-injected and keyed strings replaced.
+        /// Returns the number of injection targets updated. Callers should reset Def caches after.
+        /// </summary>
+        private static Dictionary<string, List<ReapplyTarget>> EnsureReapplyIndex()
+        {
+            lock (_reapplyIndexLock)
+            {
+                return _reapplyIndex ?? (_reapplyIndex = BuildReapplyIndex());
+            }
+        }
+
+        /// <summary>
+        /// O(1) answer to "is this cache key a DefInjected or a Keyed translation?".
+        /// Replaces the editor's old per-entry linear StartsWith scan (O(cache x params),
+        /// measured at 10s+ in big modpacks). Null when the key maps to no live param.
+        /// </summary>
+        internal static string GetTranslationTypeForCacheKey(string cacheKey)
+        {
+            var index = EnsureReapplyIndex();
+            if (index.TryGetValue(cacheKey, out var targets) && targets.Count > 0)
+            {
+                return targets[0].keyedParam != null ? "Keyed" : "DefInjected";
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Reverts the live game text for the given cache keys back to the original
+        /// (used when the user deletes a translation in the editor). Returns targets restored.
+        /// </summary>
+        internal static int RestoreOriginals(IEnumerable<string> cacheKeys)
+        {
+            var index = EnsureReapplyIndex();
+            int restored = 0;
+            foreach (var key in cacheKeys)
+            {
+                if (!index.TryGetValue(key, out var targets)) continue;
+                foreach (var target in targets)
+                {
+                    try
+                    {
+                        if (target.keyedParam != null)
+                        {
+                            target.keyedParam.UndoInject();
+                        }
+                        else if (target.collectionElement == null)
+                        {
+                            target.defParam.UndoInject();
+                            target.defParam.ClearTranslation();
+                        }
+                        else
+                        {
+                            // Removing the element blocks re-injection (count mismatch),
+                            // leaving the whole list at its originals after UndoInject
+                            target.defParam.UndoInject();
+                            target.defParam.translatedCollection.TryRemove(target.collectionElement, out _);
+                        }
+                        restored++;
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Warning(AutoTranslation.LogPrefix + $"Restore failed for '{key}': {e.Message}");
+                    }
+                }
+            }
+            return restored;
+        }
+
+        internal static int ReapplyTranslations(IEnumerable<KeyValuePair<string, string>> updated)
+        {
+            var index = EnsureReapplyIndex();
+
+            int applied = 0;
+            foreach (var kv in updated)
+            {
+                if (!index.TryGetValue(kv.Key, out var targets)) continue;
+
+                foreach (var target in targets)
+                {
+                    try
+                    {
+                        if (target.keyedParam != null)
+                        {
+                            target.keyedParam.UndoInject();
+                            target.keyedParam.translation = kv.Value;
+                            target.keyedParam.Inject();
+                            applied++;
+                        }
+                        else if (target.collectionElement == null)
+                        {
+                            target.defParam.UndoInject();
+                            target.defParam.translated = kv.Value;
+                            target.defParam.InjectTranslation();
+                            applied++;
+                        }
+                        else
+                        {
+                            var newValue = kv.Value;
+                            if (target.isRuleString)
+                            {
+                                // Mirrors the queue callback's rule-string re-formatting
+                                var token = target.collectionElement.Split(new[] { "->" }, StringSplitOptions.None);
+                                var (_, placeHolders) = token[1].ToFormatString();
+                                try
+                                {
+                                    var fitted = newValue.FitFormat(placeHolders.Count);
+                                    newValue = token[0] + "->" + string.Format(fitted, placeHolders.ToArray());
+                                }
+                                catch (Exception)
+                                {
+                                    continue;
+                                }
+                            }
+
+                            target.defParam.UndoInject();
+                            target.defParam.translatedCollection[target.collectionElement] = newValue;
+                            // Re-injects only once every element of the list is translated
+                            target.defParam.InjectTranslation();
+                            applied++;
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Warning(AutoTranslation.LogPrefix + $"Live reapply failed for '{kv.Key}': {e.Message}");
+                    }
+                }
+            }
+
+            return applied;
+        }
+
+        #endregion
+
         internal static void InjectMissingKeyed()
         {
-            if (LanguageDatabase.activeLanguage == LanguageDatabase.defaultLanguage) return;
+            // Skip for English unless the user overrode the target language
+            if (LanguageDatabase.activeLanguage == LanguageDatabase.defaultLanguage && !Helpers.HasLanguageOverride()) return;
 
             if (keyedMissing.Count == 0)
             {
@@ -267,7 +473,7 @@ namespace AutoTranslation.Services
 
         internal static void InjectMissingKeyed(ModContentPack targetMod)
         {
-            if (LanguageDatabase.activeLanguage == LanguageDatabase.defaultLanguage) return;
+            if (LanguageDatabase.activeLanguage == LanguageDatabase.defaultLanguage && !Helpers.HasLanguageOverride()) return;
             if (keyedMissing.Count == 0) return;
 
             foreach (var @param in keyedMissing.Where(x => x.mod == targetMod))

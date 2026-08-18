@@ -23,10 +23,17 @@ namespace AutoTranslation
         public static bool ShowOriginal = false;
         public static int MaxConcurrency = 5;
         public static bool EnableLanguageDetection = true; // 언어 감지 활성화 (기본값: true)
+        public static bool EnableAutoTranslation = true;   // off: 캐시만 사용, 네트워크 요청 없음
+        public static bool AutoTranslateNewMods = true;    // off: 새로 추가된 모드는 자동으로 번역 제외
+        public static string TargetLanguageOverride = "";  // 비어있으면 activeLanguage 기준
         public static HashSet<string> BlackListModPackageIds = new HashSet<string>();
+        public static HashSet<string> SeenModPackageIds = new HashSet<string>();
 
         // Polymorphic settings storage
         public static Dictionary<string, TranslatorSettings> TranslatorSettings = new Dictionary<string, TranslatorSettings>();
+
+        // Set whenever a translator records API usage; the TranslatorManager timer flushes it to disk
+        internal static volatile bool UsageDirty;
 
         // UI State
         private static SettingsTab _curTab = SettingsTab.General;
@@ -56,8 +63,6 @@ namespace AutoTranslation
         private const float GroupHeaderHeight = 30f;
         private const float SubGroupHeaderHeight = 28f;
         
-        // Performance cache for type determination
-        private static Dictionary<string, string> _typeCache = new Dictionary<string, string>();
 
         private static List<ModContentPack> AllMods => _allModsCached ?? (_allModsCached = LoadedModManager.RunningMods.ToList());
         private static List<ModContentPack> _allModsCached;
@@ -81,7 +86,11 @@ namespace AutoTranslation
             Scribe_Values.Look(ref ShowOriginal, "AutoTranslation_ShowOriginal", false);
             Scribe_Values.Look(ref MaxConcurrency, "AutoTranslation_MaxConcurrency", 5);
             Scribe_Values.Look(ref EnableLanguageDetection, "AutoTranslation_EnableLanguageDetection", true);
+            Scribe_Values.Look(ref EnableAutoTranslation, "AutoTranslation_EnableAutoTranslation", true);
+            Scribe_Values.Look(ref AutoTranslateNewMods, "AutoTranslation_AutoTranslateNewMods", true);
+            Scribe_Values.Look(ref TargetLanguageOverride, "AutoTranslation_TargetLanguageOverride", "");
             Scribe_Collections.Look(ref BlackListModPackageIds, "AutoTranslation_WhiteListModPackageIds", LookMode.Value);
+            Scribe_Collections.Look(ref SeenModPackageIds, "AutoTranslation_SeenModPackageIds", LookMode.Value);
             
             // Try to load new format settings
             Scribe_Collections.Look(ref TranslatorSettings, "TranslatorSettings", LookMode.Value, LookMode.Deep);
@@ -109,6 +118,48 @@ namespace AutoTranslation
 
             if (TranslatorSettings == null) TranslatorSettings = new Dictionary<string, TranslatorSettings>();
             if (BlackListModPackageIds == null) BlackListModPackageIds = new HashSet<string>();
+            if (SeenModPackageIds == null) SeenModPackageIds = new HashSet<string>();
+        }
+
+        /// <summary>
+        /// Called once during loading (after all mods are loaded). Mods never seen before are
+        /// auto-excluded from translation when AutoTranslateNewMods is off. On the very first
+        /// run the whole mod list is seeded so existing users' target lists don't change.
+        /// </summary>
+        internal static void ProcessNewMods()
+        {
+            var runningIds = LoadedModManager.RunningMods
+                .Select(m => m.PackageId)
+                .Where(id => !string.IsNullOrEmpty(id))
+                .ToList();
+
+            var changed = false;
+
+            if (SeenModPackageIds.Count == 0)
+            {
+                foreach (var id in runningIds) SeenModPackageIds.Add(id);
+                changed = true;
+            }
+            else
+            {
+                foreach (var id in runningIds)
+                {
+                    if (SeenModPackageIds.Add(id))
+                    {
+                        changed = true;
+                        if (!AutoTranslateNewMods)
+                        {
+                            BlackListModPackageIds.Add(id);
+                            Log.Message(AutoTranslation.LogPrefix + $"New mod '{id}' excluded from auto translation (opt-in mode). Enable it in the Target Mods tab.");
+                        }
+                    }
+                }
+            }
+
+            if (changed)
+            {
+                LoadedModManager.GetMod<AutoTranslation>()?.WriteSettings();
+            }
         }
 
         public void DoSettingsWindowContents(Rect inRect)
@@ -153,6 +204,44 @@ namespace AutoTranslation
         {
             var ls = new Listing_Standard();
             ls.Begin(inRect);
+
+            ls.CheckboxLabeled("AT_Setting_EnableAutoTranslation".Translate(), ref EnableAutoTranslation, "AT_Setting_EnableAutoTranslation_Tooltip".Translate());
+            if (!EnableAutoTranslation)
+            {
+                var prevColor = GUI.color;
+                GUI.color = Color.yellow;
+                ls.Label("AT_Setting_AutoTranslationOff".Translate());
+                GUI.color = prevColor;
+            }
+
+            ls.CheckboxLabeled("AT_Setting_AutoTranslateNewMods".Translate(), ref AutoTranslateNewMods, "AT_Setting_AutoTranslateNewMods_Tooltip".Translate());
+
+            ls.Gap(6f);
+            var overrideLabelRect = ls.GetRect(Text.LineHeight);
+            Widgets.Label(overrideLabelRect, "AT_Setting_TargetLanguageOverride".Translate());
+            TooltipHandler.TipRegion(overrideLabelRect, "AT_Setting_TargetLanguageOverride_Tooltip".Translate());
+
+            var overrideRowRect = ls.GetRect(28f);
+            TargetLanguageOverride = Widgets.TextField(overrideRowRect.LeftPart(0.62f), TargetLanguageOverride);
+            var dropdownRect = overrideRowRect.RightPart(0.36f);
+            if (Widgets.ButtonText(dropdownRect, string.IsNullOrEmpty(TargetLanguageOverride)
+                    ? "AT_Setting_LanguageAuto".Translate().ToString()
+                    : TargetLanguageOverride))
+            {
+                var options = new List<FloatMenuOption>
+                {
+                    new FloatMenuOption("AT_Setting_LanguageAuto".Translate(), () => TargetLanguageOverride = "")
+                };
+                foreach (var name in Helpers.KnownLanguageNames)
+                {
+                    var captured = name;
+                    options.Add(new FloatMenuOption(captured, () => TargetLanguageOverride = captured));
+                }
+                Find.WindowStack.Add(new FloatMenu(options));
+            }
+
+            ls.GapLine();
+
             ls.CheckboxLabeled("AT_Setting_ShowOriginal".Translate(), ref ShowOriginal, "AT_Setting_ShowOriginal_Tooltip".Translate());
             ls.CheckboxLabeled("AT_Setting_EnableLanguageDetection".Translate(), ref EnableLanguageDetection, "AT_Setting_EnableLanguageDetection_Tooltip".Translate());
             
@@ -167,13 +256,13 @@ namespace AutoTranslation
         private void DoTranslatorTab(Rect inRect)
         {
             // Estimate content height generously to ensure scrollability
-            float estimatedContentHeight = 800f; // Base height for typical settings
-            
+            float estimatedContentHeight = 950f; // Base height incl. cost tracking section
+
             // Add extra height for AI model settings with batch options
             var targetTranslator = TranslatorManager.GetTranslator(TranslatorName);
             if (targetTranslator is Translator_BaseOnlineAIModel)
             {
-                estimatedContentHeight += 200f; // Extra space for batch settings
+                estimatedContentHeight += 400f; // Extra space for batch + cost tracking settings
             }
             
             var viewRect = new Rect(0f, 0f, inRect.width - 16f, estimatedContentHeight);
@@ -548,10 +637,10 @@ namespace AutoTranslation
                     TranslationCacheManager.AddOrUpdate(pair.Key, pair.Value);
                 }
                 
-                // Serialize translations
+                // Serialize translations (same XML format as the on-disk cache)
                 var translations = TranslationCacheManager.Instance.Cache;
-                var jsonData = TranslationSerializer.SerializeToJson(translations.ToDictionary(kvp => kvp.Key, kvp => kvp.Value));
-                
+                var xmlData = TranslationCacheManager.SerializeCacheToXml();
+
                 // Create metadata
                 var metadata = new TranslationMetadata
                 {
@@ -564,7 +653,7 @@ namespace AutoTranslation
                 
                 // Upload
                 var gistService = new GistService();
-                var result = gistService.UploadTranslation(jsonData, metadata);
+                var result = gistService.UploadTranslation(xmlData, metadata);
                 
                 if (result.Success)
                 {
@@ -757,9 +846,6 @@ namespace AutoTranslation
                 }
             }
             
-            // Rebuild type cache from InjectionManager data
-            BuildTypeCache();
-            
             var cache = TranslationCacheManager.Instance.Cache;
             
             // Group by mod and then by type (DefInjected/Keyed) - no search filtering here
@@ -800,101 +886,35 @@ namespace AutoTranslation
         }
         
         /// <summary>
-        /// Builds a cache mapping original text to translation type (DefInjected/Keyed)
-        /// by scanning InjectionManager data once. This avoids repeated O(n) lookups.
-        /// </summary>
-        private static void BuildTypeCache()
-        {
-            _typeCache.Clear();
-            
-            // Scan DefInjected entries
-            foreach (var defParam in InjectionManager.defInjectedMissing)
-            {
-                if (defParam.isCollection)
-                {
-                    if (defParam.originalCollection != null)
-                    {
-                        foreach (var original in defParam.originalCollection)
-                        {
-                            if (!string.IsNullOrEmpty(original))
-                            {
-                                _typeCache[original] = "DefInjected";
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    if (!string.IsNullOrEmpty(defParam.original))
-                    {
-                        _typeCache[defParam.original] = "DefInjected";
-                    }
-                }
-            }
-            
-            // Scan Keyed entries
-            foreach (var keyedParam in InjectionManager.keyedMissing)
-            {
-                if (!string.IsNullOrEmpty(keyedParam.value.value))
-                {
-                    _typeCache[keyedParam.value.value] = "Keyed";
-                }
-            }
-        }
-        
-        /// <summary>
-        /// Determines whether a cache key corresponds to a DefInjected or Keyed translation
-        /// using the pre-built type cache for O(1) lookup performance.
+        /// Determines whether a cache key corresponds to a DefInjected or Keyed translation.
+        /// Uses InjectionManager's exact reverse index (O(1)); the old implementation fell
+        /// back to a linear StartsWith scan over all originals PER ENTRY, which took 10s+
+        /// in big modpacks.
         /// </summary>
         private static string DetermineTranslationType(string cacheKey)
         {
-            // Extract original text from cache key format: "ModPackageId:originalText[+additionalKey]"
+            var known = InjectionManager.GetTranslationTypeForCacheKey(cacheKey);
+            if (known != null) return known;
+
+            // Fallback heuristic for stale/imported entries with no live param:
+            // DefInjected-style paths typically contain dots ("ThingDef.Wood.label")
             var colonIndex = cacheKey.IndexOf(':');
-            string textToSearch;
-            
-            if (colonIndex > 0 && colonIndex < cacheKey.Length - 1)
-            {
-                textToSearch = cacheKey.Substring(colonIndex + 1);
-            }
-            else
-            {
-                textToSearch = cacheKey;
-            }
-            
-            // Try exact match first (fastest - O(1))
-            if (_typeCache.TryGetValue(textToSearch, out var cachedType))
-            {
-                return cachedType;
-            }
-            
-            // If there's an additionalKey appended, try to find the original text
-            // Cache keys may be in format: "originalText+additionalKey"
-            foreach (var cachedEntry in _typeCache)
-            {
-                if (textToSearch.StartsWith(cachedEntry.Key))
-                {
-                    return cachedEntry.Value;
-                }
-            }
-            
-            // Fallback: if not found in cache, try to guess based on structure
-            // DefInjected typically has dots (e.g., "ThingDef.Wood.label")
-            // Keyed translations usually don't follow this pattern
-            if (textToSearch.Contains(".") && textToSearch.Split('.').Length >= 3)
-            {
-                return "DefInjected";
-            }
-            
-            // Default to Keyed if we can't determine
-            return "Keyed";
+            var textToSearch = colonIndex > 0 && colonIndex < cacheKey.Length - 1
+                ? cacheKey.Substring(colonIndex + 1)
+                : cacheKey;
+
+            return textToSearch.Contains(".") && textToSearch.Split('.').Length >= 3 ? "DefInjected" : "Keyed";
         }
 
         private static bool MatchesSearchQuery(KeyValuePair<string, string> entry)
         {
             if (string.IsNullOrEmpty(_editorSearchQuery)) return true;
-            
-            var query = _editorSearchQuery.ToLower();
-            return entry.Key.ToLower().Contains(query) || entry.Value.ToLower().Contains(query) || GetModDisplayName(entry.Key).ToLower().Contains(query);
+
+            // Culture-invariant, allocation-free comparison (ToLower allocated 3 strings per entry)
+            var query = _editorSearchQuery;
+            return entry.Key.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0
+                   || entry.Value.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0
+                   || GetModDisplayName(entry.Key).IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0;
         }
         
         private static void UpdateFilteredCache()
@@ -1149,10 +1169,13 @@ namespace AutoTranslation
                     // Update file cache and in-memory cache
                     TranslationCacheManager.AddOrUpdate(entry.Key, newValue);
                     TranslatorManager.CachedTranslationsV2[entry.Key] = newValue;
-                    
-                    // Changes require restart to take effect
-                    _restartRequired = true;
-                    
+
+                    // Apply to the live game immediately; restart only needed if no live target matched
+                    var applied = InjectionManager.ReapplyTranslations(
+                        new[] { new KeyValuePair<string, string>(entry.Key, newValue) });
+                    if (applied > 0) ResetDefCaches();
+                    else _restartRequired = true;
+
                     _editingKey = null;
                     RefreshEditorFilter();
                 }
@@ -1171,10 +1194,12 @@ namespace AutoTranslation
                 // Remove from file cache and in-memory cache
                 TranslationCacheManager.Remove(entry.Key);
                 TranslatorManager.CachedTranslationsV2.TryRemove(entry.Key, out _);
-                
-                // Changes require restart to take effect
-                _restartRequired = true;
-                
+
+                // Revert the live game text to the original immediately
+                var restored = InjectionManager.RestoreOriginals(new[] { entry.Key });
+                if (restored > 0) ResetDefCaches();
+                else _restartRequired = true;
+
                 RefreshEditorFilter();
             }
         }
@@ -1227,7 +1252,7 @@ namespace AutoTranslation
             TooltipHandler.TipRegion(badgeRect, tooltip);
         }
 
-        private static void ResetDefCaches()
+        internal static void ResetDefCaches()
         {
             try
             {

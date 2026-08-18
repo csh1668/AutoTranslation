@@ -18,25 +18,19 @@ namespace AutoTranslation.Translators
         private const string testUrl = "https://translate.google.com";
         private const string urlFormat = "https://translate.google.com/translate_a/single?client=gtx&sl={0}&tl={1}&dt=t&ie=UTF-8&oe=UTF-8&q={2}";
         private static readonly StringBuilder sb = new StringBuilder(1024);
-        private string _cachedTranslateLanguage;
 
         public override string Name  => "Google";
 
-        public override string TranslateLanguage => _cachedTranslateLanguage ?? (_cachedTranslateLanguage = GetTranslateLanguage());
+        // Not cached: the user can change the target language override at runtime
+        public override string TranslateLanguage => GetTranslateLanguage();
         public override bool RequiresKey => false;
 
         public override void Prepare()
         {
-            try
-            {
-                var resp = NetworkHelper.Get(testUrl);
-                if (string.IsNullOrEmpty(resp)) throw new Exception("no response");
-                Ready = true;
-            }
-            catch (Exception ex)
-            {
-                Log.Message(AutoTranslation.LogPrefix + $"Preparing Translator named '{Name}' was failed, reason: {ex.Message}");
-            }
+            // No connectivity preflight: it ran synchronously during game load and could
+            // block for minutes when the endpoint is unreachable (e.g. no VPN in China).
+            // Reachability is validated by real translation requests + the circuit breaker.
+            Ready = true;
         }
 
         public override bool TryTranslate(string text, out string translated)
@@ -74,6 +68,8 @@ namespace AutoTranslation.Translators
 
         public override bool SupportsCurrentLanguage()
         {
+            if (Helpers.HasLanguageOverride()) return true;
+
             var lang = LanguageDatabase.activeLanguage;
             if (lang == null)
             {
@@ -81,7 +77,7 @@ namespace AutoTranslation.Translators
                 return false;
             }
 
-            return TranslateLanguageGetter.TryGetValue(lang.LegacyFolderName, out var _);
+            return TranslateLanguageGetter.ContainsKey(lang.LegacyFolderName.NormalizeLanguageFolder());
         }
 
         internal static string ParseResult(string text, out string detectedLang)
@@ -150,22 +146,12 @@ namespace AutoTranslation.Translators
         
         private static string GetTranslateLanguage()
         {
-            if (LanguageDatabase.activeLanguage == null)
+            var res = Helpers.ResolveTargetLanguage(TranslateLanguageGetter);
+            if (res == null)
             {
-                Log.Warning(AutoTranslation.LogPrefix + "activeLanguage was null");
-                return "en";
-            }
-
-            var lang = LanguageDatabase.activeLanguage.LegacyFolderName;
-
-            lang = lang.Split('_').First();
-
-            if (!TranslateLanguageGetter.TryGetValue(lang, out var res))
-            {
-                Log.Error(AutoTranslation.LogPrefix + $"Unsupported language: {LanguageDatabase.activeLanguage.LegacyFolderName}");
+                Log.Error(AutoTranslation.LogPrefix + $"Unsupported language: {LanguageDatabase.activeLanguage?.LegacyFolderName ?? "(null)"}");
                 res = "en";
             }
-
             return res;
         }
     }

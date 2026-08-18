@@ -24,6 +24,9 @@ namespace AutoTranslation.Translators
         bool SupportsBatchTranslation { get; }
         bool TryTranslateBatch(List<string> texts, out List<string> translated);
 
+        /// Hard cap on concurrent requests for this translator (0 = no cap)
+        int MaxConcurrentRequests { get; }
+
         void DrawSettings(Listing_Standard ls);
     }
 }
