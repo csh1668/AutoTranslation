@@ -16,13 +16,21 @@ namespace AutoTranslation
     [HarmonyPatch]
     public static class Patches
     {
-        private static bool _defInjectedMissingloaded, _keyedMissingLoaded;
+        private static bool _defInjectedMissingloaded, _keyedMissingLoaded, _newModsProcessed;
+
+        private static void ProcessNewModsOnce()
+        {
+            if (_newModsProcessed) return;
+            _newModsProcessed = true;
+            Settings.ProcessNewMods();
+        }
 
         [HarmonyPatch(typeof(LoadedLanguage)), HarmonyPatch(nameof(LoadedLanguage.InjectIntoData_AfterImpliedDefs)), HarmonyPostfix]
         public static void Postfix_LoadedLanguage_InjectIntoData_AfterImpliedDefs()
         {
             if (_defInjectedMissingloaded) return;
 
+            ProcessNewModsOnce();
             AutoTranslation.sw.Start();
             Log.Message(AutoTranslation.LogPrefix + "finding untranslated DefInjected...");
 
@@ -41,6 +49,7 @@ namespace AutoTranslation
         {
             if (_keyedMissingLoaded) return;
 
+            ProcessNewModsOnce();
             AutoTranslation.sw.Start();
             _keyedMissingLoaded = true;
             Log.Message(AutoTranslation.LogPrefix + "finding untranslated Keyed...");

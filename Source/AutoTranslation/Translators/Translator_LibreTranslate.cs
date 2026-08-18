@@ -15,8 +15,8 @@ namespace AutoTranslation.Translators
 
         public override bool RequiresKey => false;
 
-        public override string TranslateLanguage => _cachedTranslateLanguage ?? (_cachedTranslateLanguage = GetTranslateLanguage());
-        private string _cachedTranslateLanguage;
+        // Not cached: the user can change the target language override at runtime
+        public override string TranslateLanguage => GetTranslateLanguage();
 
         public TranslatorSettings_LibreTranslate Config
         {
@@ -43,10 +43,10 @@ namespace AutoTranslation.Translators
                 var url = Config.CustomUrl.TrimEnd('/') + "/translate";
                 
                 // Build JSON body - only include api_key if it's not empty
-                var apiKeyField = string.IsNullOrEmpty(Config.APIKey) 
-                    ? "" 
+                var apiKeyField = string.IsNullOrEmpty(Config.APIKey)
+                    ? ""
                     : $@",
-                    ""api_key"": ""{Config.APIKey}""";
+                    ""api_key"": ""{Config.APIKey.EscapeJsonString()}""";
                 
                 var body = $@"{{
                     ""q"": ""{protectedText.EscapeJsonString()}"",
@@ -67,7 +67,10 @@ namespace AutoTranslation.Translators
                     translated = text;
                     return false;
                 }
-                
+
+                Config.UsageCharacters += text.Length;
+                global::AutoTranslation.Settings.UsageDirty = true;
+
                 // Restore placeholders
                 var (restoredText, allRestored) = translatedProtected.RestorePlaceholders(placeholders);
                 translated = restoredText;
@@ -95,6 +98,7 @@ namespace AutoTranslation.Translators
 
         public override bool SupportsCurrentLanguage()
         {
+            if (Helpers.HasLanguageOverride()) return true;
             return TranslateLanguage != "en"; // Support all mapped languages
         }
 
@@ -116,16 +120,31 @@ namespace AutoTranslation.Translators
             var apiKeyLabelRect = ls.GetRect(Text.LineHeight);
             Widgets.Label(apiKeyLabelRect, "API Key (Optional)");
             TooltipHandler.TipRegion(apiKeyLabelRect, "AT_Setting_RequiresAPIKey_Tooltip".Translate());
-            
+
             Config.APIKey = ls.TextEntry(Config.APIKey);
+
+            ls.GapLine();
+            ls.Label("AT_Setting_CostTracking".Translate());
+            ls.Label("AT_Setting_UsageCharacters".Translate(Config.UsageCharacters.ToString("N0")));
+
+            var priceRect = ls.GetRect(Text.LineHeight + 4f);
+            Widgets.Label(priceRect.LeftPart(0.6f), "AT_Setting_PricePerMChars".Translate());
+            Config.PricePerMChars = Helpers.DecimalTextField(priceRect.RightPart(0.38f), $"{Name}_PricePerMChars", Config.PricePerMChars);
+
+            var cost = Config.UsageCharacters / 1_000_000.0 * Config.PricePerMChars;
+            ls.Label("AT_Setting_EstimatedCost".Translate(cost.ToString("F4")));
+
+            if (ls.ButtonText("AT_Setting_ResetUsage".Translate()))
+            {
+                Config.UsageCharacters = 0;
+                global::AutoTranslation.Settings.UsageDirty = true;
+            }
         }
 
         // Language Mapping
         private static string GetTranslateLanguage()
         {
-            if (LanguageDatabase.activeLanguage == null) return "en";
-            var lang = LanguageDatabase.activeLanguage.LegacyFolderName.Split('_').First();
-            return _languageMap.TryGetValue(lang, out var res) ? res : "en";
+            return Helpers.ResolveTargetLanguage(_languageMap) ?? "en";
         }
 
         private static readonly Dictionary<string, string> _languageMap = new Dictionary<string, string>

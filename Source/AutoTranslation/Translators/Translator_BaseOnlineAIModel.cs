@@ -111,7 +111,9 @@ namespace AutoTranslation.Translators
 
                     // Phase 2: AI Translation - Pass prompt explicitly
                     var prompt = GetNormalPrompt();
-                    var translatedProtected = ParseResponse(GetResponseUnsafe(protectedText, prompt));
+                    var rawResponse = GetResponseUnsafe(protectedText, prompt);
+                    RecordUsage(rawResponse);
+                    var translatedProtected = ParseResponse(rawResponse);
 
                     // Phase 3: Restore placeholders
                     var (restoredText, allRestored) = translatedProtected.RestorePlaceholders(placeholders);
@@ -179,6 +181,9 @@ namespace AutoTranslation.Translators
         // Batch translation support
         public virtual bool SupportsBatchTranslation => true;
 
+        // No translator-side cap by default
+        public virtual int MaxConcurrentRequests => 0;
+
         public bool TryTranslateBatch(List<string> texts, out List<string> translated)
         {
             translated = new List<string>();
@@ -215,7 +220,9 @@ namespace AutoTranslation.Translators
                 // Phase 3: Send batch request to AI with BatchPrompt
                 // Pass batch prompt as local parameter (thread-safe)
                 var batchPrompt = GetBatchPrompt();
-                var response = ParseResponse(GetResponseUnsafe(batchXml, batchPrompt));
+                var rawResponse = GetResponseUnsafe(batchXml, batchPrompt);
+                RecordUsage(rawResponse);
+                var response = ParseResponse(rawResponse);
 
                 // Phase 4: Parse XML response
                 var translatedTexts = ParseBatchXml(response, protectedTexts.Count);
@@ -296,7 +303,9 @@ namespace AutoTranslation.Translators
                 }
                 
                 // Decode Unicode escape sequences (e.g., \u003c becomes <)
-                var cleanedResponse = Regex.Unescape(response);
+                // JSON-layer parsing already decoded escape sequences; unescaping again would
+                // throw on literal backslashes in translated text
+                var cleanedResponse = response;
                 
                 // Clean response - remove markdown code blocks if present
                 if (cleanedResponse.Contains("```xml") || cleanedResponse.Contains("```"))
@@ -349,8 +358,8 @@ namespace AutoTranslation.Translators
         /// </summary>
         protected string GetBatchPrompt()
         {
-            var targetLanguage = LanguageDatabase.activeLanguage?.LegacyFolderName ?? "English";
-            
+            var targetLanguage = GetTargetLanguageName();
+
             return $"You are translating RimWorld game content into natural {targetLanguage}.\n\n" +
                 "TASK: Translate the XML document below. Each <text> element contains content to translate.\n\n" +
                 "CRITICAL RULES:\n" +
@@ -396,6 +405,28 @@ namespace AutoTranslation.Translators
         /// </summary>
         protected abstract string GetResponseUnsafe(string text, string prompt);
 
+        /// <summary>
+        /// Extracts token usage from a raw API response and accumulates it for cost tracking.
+        /// Tries the usage key names of each supported API (OpenAI / Anthropic / Gemini).
+        /// </summary>
+        protected void RecordUsage(string rawResponse)
+        {
+            if (string.IsNullOrEmpty(rawResponse) || Config == null) return;
+
+            var input = rawResponse.GetLongValueFromJson("prompt_tokens")
+                        ?? rawResponse.GetLongValueFromJson("input_tokens")
+                        ?? rawResponse.GetLongValueFromJson("promptTokenCount");
+            var output = rawResponse.GetLongValueFromJson("completion_tokens")
+                         ?? rawResponse.GetLongValueFromJson("output_tokens")
+                         ?? rawResponse.GetLongValueFromJson("candidatesTokenCount");
+
+            if (input == null && output == null) return;
+
+            Config.UsageInputTokens += input ?? 0;
+            Config.UsageOutputTokens += output ?? 0;
+            global::AutoTranslation.Settings.UsageDirty = true;
+        }
+
         protected virtual string ParseResponse(string response)
         {
             return response.GetStringValueFromJson("text");
@@ -404,9 +435,19 @@ namespace AutoTranslation.Translators
         /// <summary>
         /// Gets the base translation prompt template (thread-safe, computed on-demand)
         /// </summary>
+        /// <summary>
+        /// Language name used in AI prompts: manual override verbatim, otherwise the
+        /// active language folder with custom suffixes stripped ("Russian-SK" -> "Russian").
+        /// </summary>
+        protected static string GetTargetLanguageName()
+        {
+            if (Helpers.HasLanguageOverride()) return Helpers.EffectiveLanguageFolder();
+            return LanguageDatabase.activeLanguage?.LegacyFolderName.NormalizeLanguageFolder() ?? "English";
+        }
+
         protected string GetBasePrompt()
         {
-            return $"Translate the following text into natural {LanguageDatabase.activeLanguage?.LegacyFolderName ?? "English"} suitable for RimWorld game context.\n\n" +
+            return $"Translate the following text into natural {GetTargetLanguageName()} suitable for RimWorld game context.\n\n" +
                 "CRITICAL RULES:\n" +
                 "1. PRESERVE all tokens in the format __PH[number]__ exactly as they appear.\n" +
                 "2. Do NOT translate, remove, or modify __PH[number]__ tokens.\n" +
@@ -465,15 +506,63 @@ namespace AutoTranslation.Translators
 
         private List<string> _models;
 
-        public void DrawSettings(Listing_Standard ls)
+        /// <summary>
+        /// Draws the connection-related fields (API key by default). Overridden by translators
+        /// that connect differently (e.g. Claude Code runs a local CLI instead).
+        /// </summary>
+        protected virtual void DrawConnectionSettings(Listing_Standard ls)
         {
-            if (Settings == null) Settings = new TranslatorSettings_AIModel();
-
             var apiKeyLabelRect = ls.GetRect(Text.LineHeight);
             Widgets.Label(apiKeyLabelRect, "AT_Setting_APIKey".Translate());
             TooltipHandler.TipRegion(apiKeyLabelRect, "AT_Setting_RequiresAPIKey_Tooltip".Translate());
-            
+
             Config.UserAPIKey = ls.TextEntry(Config.UserAPIKey);
+        }
+
+        /// <summary>
+        /// Draws the custom base URL field. Overridden by translators without an HTTP endpoint.
+        /// </summary>
+        protected virtual void DrawBaseUrlSettings(Listing_Standard ls)
+        {
+            ls.Label("AT_Setting_CustomBaseURL".Translate());
+            Config.UserCustomBaseURL = ls.TextEntry(Config.UserCustomBaseURL);
+        }
+
+        protected void DrawCostSection(Listing_Standard ls)
+        {
+            ls.GapLine();
+            ls.Label("AT_Setting_CostTracking".Translate());
+
+            ls.Label("AT_Setting_UsageTokens".Translate(Config.UsageInputTokens.ToString("N0"), Config.UsageOutputTokens.ToString("N0")));
+
+            var inKey = $"{Name}_PriceIn";
+            var outKey = $"{Name}_PriceOut";
+
+            var inRect = ls.GetRect(Text.LineHeight + 4f);
+            Widgets.Label(inRect.LeftPart(0.6f), "AT_Setting_PriceInputPerMTokens".Translate());
+            Config.PriceInputPerMTokens = Helpers.DecimalTextField(inRect.RightPart(0.38f), inKey, Config.PriceInputPerMTokens);
+
+            var outRect = ls.GetRect(Text.LineHeight + 4f);
+            Widgets.Label(outRect.LeftPart(0.6f), "AT_Setting_PriceOutputPerMTokens".Translate());
+            Config.PriceOutputPerMTokens = Helpers.DecimalTextField(outRect.RightPart(0.38f), outKey, Config.PriceOutputPerMTokens);
+
+            var cost = Config.UsageInputTokens / 1_000_000.0 * Config.PriceInputPerMTokens
+                       + Config.UsageOutputTokens / 1_000_000.0 * Config.PriceOutputPerMTokens;
+            ls.Label("AT_Setting_EstimatedCost".Translate(cost.ToString("F4")));
+
+            if (ls.ButtonText("AT_Setting_ResetUsage".Translate()))
+            {
+                Config.UsageInputTokens = 0;
+                Config.UsageOutputTokens = 0;
+                global::AutoTranslation.Settings.UsageDirty = true;
+            }
+        }
+
+        public virtual void DrawSettings(Listing_Standard ls)
+        {
+            if (Settings == null) Settings = new TranslatorSettings_AIModel();
+
+            DrawConnectionSettings(ls);
 
             ls.Gap();
 
@@ -517,9 +606,8 @@ namespace AutoTranslation.Translators
             Config.UserSelectedModel = ls.TextEntry(Config.UserSelectedModel);
 
             ls.Gap();
-            
-            ls.Label("AT_Setting_CustomBaseURL".Translate());
-            Config.UserCustomBaseURL = ls.TextEntry(Config.UserCustomBaseURL);
+
+            DrawBaseUrlSettings(ls);
 
             ls.Gap();
 
@@ -579,6 +667,8 @@ namespace AutoTranslation.Translators
             );
             Config.RequestTimeoutSeconds = Mathf.RoundToInt(newTimeout / 10f) * 10;
 
+            DrawCostSection(ls);
+
             ls.Gap();
 
             if (ls.ButtonText("AT_Setting_Reset".Translate()))
@@ -591,6 +681,10 @@ namespace AutoTranslation.Translators
                 Config.EnableBatchTranslation = true;
                 Config.BatchSizeTokens = 2000;
                 Config.RequestTimeoutSeconds = 30;
+                Config.PriceInputPerMTokens = 0f;
+                Config.PriceOutputPerMTokens = 0f;
+                Helpers.ClearDecimalBuffer($"{Name}_PriceIn");
+                Helpers.ClearDecimalBuffer($"{Name}_PriceOut");
                 ResetSettings();
             }
         }

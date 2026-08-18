@@ -95,7 +95,8 @@ namespace AutoTranslation.UI
             var buttonRect = new Rect(0f, currentY, inRect.width, 30f);
             var selectAllRect = new Rect(buttonRect.x, buttonRect.y, 120f, 28f);
             var deselectAllRect = new Rect(selectAllRect.xMax + 5f, buttonRect.y, 120f, 28f);
-            
+            var selectNewOnlyRect = new Rect(deselectAllRect.xMax + 5f, buttonRect.y, 180f, 28f);
+
             if (Widgets.ButtonText(selectAllRect, "AT_Gist_SelectAll".Translate()))
             {
                 selectedKeys.Clear();
@@ -104,10 +105,20 @@ namespace AutoTranslation.UI
                     selectedKeys.Add(key);
                 }
             }
-            
+
             if (Widgets.ButtonText(deselectAllRect, "AT_Gist_DeselectAll".Translate()))
             {
                 selectedKeys.Clear();
+            }
+
+            // "Keep my existing translations": only translations I don't have yet
+            if (Widgets.ButtonText(selectNewOnlyRect, "AT_Gist_SelectNewOnly".Translate()))
+            {
+                selectedKeys.Clear();
+                foreach (var item in mergeItems.Values)
+                {
+                    if (item.IsNew) selectedKeys.Add(item.Key);
+                }
             }
             
             currentY += 35f;
@@ -247,6 +258,7 @@ namespace AutoTranslation.UI
         private void ApplyMerge()
         {
             int count = 0;
+            var updated = new List<KeyValuePair<string, string>>();
             foreach (var key in selectedKeys)
             {
                 if (mergeItems.TryGetValue(key, out var item))
@@ -254,14 +266,22 @@ namespace AutoTranslation.UI
                     // Update both caches
                     TranslationCacheManager.AddOrUpdate(key, item.RemoteTranslation);
                     TranslatorManager.CachedTranslationsV2[key] = item.RemoteTranslation;
+                    updated.Add(new KeyValuePair<string, string>(key, item.RemoteTranslation));
                     count++;
                 }
             }
-            
+
             // Save to disk
             TranslationCacheManager.Save(nameof(TranslatorManager.CachedTranslationsV2));
-            
-            Messages.Message($"{"AT_Gist_MergeSuccess".Translate()} ({count})", MessageTypeDefOf.PositiveEvent);
+
+            // Apply to the LIVE game immediately - no restart needed
+            var applied = InjectionManager.ReapplyTranslations(updated);
+            if (applied > 0)
+            {
+                Settings.ResetDefCaches();
+            }
+
+            Messages.Message($"{"AT_Gist_MergeSuccess".Translate()} ({count}, {"AT_Gist_AppliedLive".Translate()}: {applied})", MessageTypeDefOf.PositiveEvent);
         }
     }
 }

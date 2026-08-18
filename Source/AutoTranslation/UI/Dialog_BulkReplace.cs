@@ -304,22 +304,30 @@ namespace AutoTranslation.UI
             try
             {
                 int count = 0;
+                var updated = new List<KeyValuePair<string, string>>();
                 foreach (var item in previewItems)
                 {
                     TranslationCacheManager.AddOrUpdate(item.Key, item.NewTranslation);
-                    
+
                     // Also update TranslatorManager cache if exists
                     if (TranslatorManager.CachedTranslationsV2.ContainsKey(item.Key))
                     {
                         TranslatorManager.CachedTranslationsV2[item.Key] = item.NewTranslation;
                     }
-                    
+
+                    updated.Add(new KeyValuePair<string, string>(item.Key, item.NewTranslation));
                     count++;
                 }
-                
+
                 // Save once
                 TranslationCacheManager.Save(nameof(TranslatorManager.CachedTranslationsV2));
-                
+
+                // Apply to the live game immediately - no restart needed
+                if (InjectionManager.ReapplyTranslations(updated) > 0)
+                {
+                    Settings.ResetDefCaches();
+                }
+
                 Messages.Message($"{"AT_BulkReplace_Success".Translate()} ({count})", MessageTypeDefOf.PositiveEvent);
                 
                 // Refresh Settings UI if open

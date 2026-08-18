@@ -2,6 +2,15 @@
 <LanguageData>
     <AT_Name>Auto Translation</AT_Name>
 
+    <AT_Setting_EnableAutoTranslation>Enable auto translation (default: On)</AT_Setting_EnableAutoTranslation>
+    <AT_Setting_EnableAutoTranslation_Tooltip>When off, no network requests are made at all - only previously cached translations are applied. Useful when you are offline or want to stop translating. Fully applied after a game restart.</AT_Setting_EnableAutoTranslation_Tooltip>
+    <AT_Setting_AutoTranslationOff>Only cached translations are used.</AT_Setting_AutoTranslationOff>
+    <AT_Setting_AutoTranslateNewMods>Automatically translate newly added mods (default: On)</AT_Setting_AutoTranslateNewMods>
+    <AT_Setting_AutoTranslateNewMods_Tooltip>When off, mods added after this point are excluded from translation by default. You can enable them manually in the Target Mods tab.</AT_Setting_AutoTranslateNewMods_Tooltip>
+    <AT_Setting_TargetLanguageOverride>Target language override (empty = follow game language):</AT_Setting_TargetLanguageOverride>
+    <AT_Setting_TargetLanguageOverride_Tooltip>Manually set the translation target language instead of the game's active language. Enter a language NAME in English (e.g. "Latvian") or pick one from the dropdown. Leave empty to detect automatically.</AT_Setting_TargetLanguageOverride_Tooltip>
+    <AT_Setting_LanguageAuto>(Auto - follow game language)</AT_Setting_LanguageAuto>
+
     <AT_Setting_ShowOriginal>Show original text on hover (default: Off):</AT_Setting_ShowOriginal>
     <AT_Setting_ShowOriginal_Tooltip>When hovering over translated text, the original text will be displayed. Due to system limitations, this feature is not available for all translations.</AT_Setting_ShowOriginal_Tooltip>
     
@@ -31,6 +40,20 @@
     <AT_Setting_BaseURL>Base URL: </AT_Setting_BaseURL>
     <AT_Setting_CustomBaseURL>Custom base URL: </AT_Setting_CustomBaseURL>
     <AT_Setting_Reset>Reset to Defaults</AT_Setting_Reset>
+
+    <!-- Claude Code CLI -->
+    <AT_Setting_ClaudeCodeNotice>Uses the locally installed Claude Code CLI with its own login (subscription). No API key is required, but the CLI must be installed and logged in.</AT_Setting_ClaudeCodeNotice>
+    <AT_Setting_ClaudeCodePath>Path to the CLI executable (empty = "claude" on PATH):</AT_Setting_ClaudeCodePath>
+
+    <!-- Cost tracking -->
+    <AT_Setting_CostTracking>::Cost Tracking::</AT_Setting_CostTracking>
+    <AT_Setting_UsageTokens>Tokens used - input: {0}, output: {1}</AT_Setting_UsageTokens>
+    <AT_Setting_UsageCharacters>Characters sent: {0}</AT_Setting_UsageCharacters>
+    <AT_Setting_PriceInputPerMTokens>Price per 1M input tokens (USD):</AT_Setting_PriceInputPerMTokens>
+    <AT_Setting_PriceOutputPerMTokens>Price per 1M output tokens (USD):</AT_Setting_PriceOutputPerMTokens>
+    <AT_Setting_PricePerMChars>Price per 1M characters (USD):</AT_Setting_PricePerMChars>
+    <AT_Setting_EstimatedCost>Estimated cost: ${0}</AT_Setting_EstimatedCost>
+    <AT_Setting_ResetUsage>Reset usage counters</AT_Setting_ResetUsage>
     <AT_Setting_NoTranslatorError>Translator not found. Please check settings.</AT_Setting_NoTranslatorError>
 
     <AT_Setting_Misc>::Miscellaneous::</AT_Setting_Misc>
@@ -94,6 +117,38 @@
     <AT_Setting_Editor_Total>Total</AT_Setting_Editor_Total>
     <AT_Setting_Editor_RestartRequired>Changes will be applied after game restart.</AT_Setting_Editor_RestartRequired>
     
+    <!-- Gist Sharing -->
+    <AT_Gist_SectionTitle>::Translation Sharing (Gist)::</AT_Gist_SectionTitle>
+    <AT_Gist_UploadButton>Upload my translations</AT_Gist_UploadButton>
+    <AT_Gist_Uploading>Uploading...</AT_Gist_Uploading>
+    <AT_Gist_DownloadLabel>Download shared translations (Gist URL or ID):</AT_Gist_DownloadLabel>
+    <AT_Gist_DownloadButton>Download</AT_Gist_DownloadButton>
+    <AT_Gist_Downloading>Downloading...</AT_Gist_Downloading>
+    <AT_Gist_UploadSuccess>Translations uploaded successfully!</AT_Gist_UploadSuccess>
+    <AT_Gist_UploadFailed>Upload failed</AT_Gist_UploadFailed>
+    <AT_Gist_CopiedToClipboard>URL copied to clipboard</AT_Gist_CopiedToClipboard>
+    <AT_Gist_DownloadFailed>Download failed</AT_Gist_DownloadFailed>
+    <AT_Gist_PreviewTitle>Shared Translation Info</AT_Gist_PreviewTitle>
+    <AT_Gist_TargetLanguage>Target language</AT_Gist_TargetLanguage>
+    <AT_Gist_Translator>Translator</AT_Gist_Translator>
+    <AT_Gist_Model>Model</AT_Gist_Model>
+    <AT_Gist_Date>Date</AT_Gist_Date>
+    <AT_Gist_TranslationCount>Translations</AT_Gist_TranslationCount>
+    <AT_Gist_Confirm>Continue</AT_Gist_Confirm>
+    <AT_Gist_MergeTitle>Merge Shared Translations</AT_Gist_MergeTitle>
+    <AT_Gist_MergeInfo>Entries that differ from your local translations</AT_Gist_MergeInfo>
+    <AT_Gist_SelectAll>Select all</AT_Gist_SelectAll>
+    <AT_Gist_DeselectAll>Deselect all</AT_Gist_DeselectAll>
+    <AT_Gist_SelectNewOnly>New entries only (keep mine)</AT_Gist_SelectNewOnly>
+    <AT_Gist_MergeSelected>Merge selected</AT_Gist_MergeSelected>
+    <AT_Gist_NoDifferences>No differences from your local translations.</AT_Gist_NoDifferences>
+    <AT_Gist_Key>Key</AT_Gist_Key>
+    <AT_Gist_LocalTranslation>My translation</AT_Gist_LocalTranslation>
+    <AT_Gist_RemoteTranslation>Shared translation</AT_Gist_RemoteTranslation>
+    <AT_Gist_NewTranslation>(new)</AT_Gist_NewTranslation>
+    <AT_Gist_MergeSuccess>Merge complete</AT_Gist_MergeSuccess>
+    <AT_Gist_AppliedLive>applied in-game</AT_Gist_AppliedLive>
+
     <!-- Bulk Replace Dialog -->
     <AT_BulkReplace_Button>Bulk Replace</AT_BulkReplace_Button>
     <AT_BulkReplace_Title>Bulk Replace Translations</AT_BulkReplace_Title>

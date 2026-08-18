@@ -96,7 +96,6 @@
     <Compile Include="Services\APIKeyRotater.cs" />
     <Compile Include="Services\GistService.cs" />
     <Compile Include="Services\NetworkStateMonitor.cs" />
-    <Compile Include="Services\TranslationSerializer.cs" />
     <Compile Include="UI\Dialog_GistMerge.cs" />
     <Compile Include="UI\Dialog_GistPreview.cs" />
     <Compile Include="CompatibilityPatches.cs" />
@@ -123,6 +122,7 @@
     <Compile Include="Translators\TranslatorSettings_LibreTranslate.cs" />
     <Compile Include="Translators\Translator_ChatGPT.cs" />
     <Compile Include="Translators\Translator_Claude.cs" />
+    <Compile Include="Translators\Translator_ClaudeCode.cs" />
     <Compile Include="Translators\Translator_DeepL_Pro.cs" />
     <Compile Include="Translators\Translator_DeepL.cs" />
     <Compile Include="Translators\Translator_DeepSeek.cs" />

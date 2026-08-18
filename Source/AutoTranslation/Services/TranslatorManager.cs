@@ -35,6 +35,19 @@ namespace AutoTranslation.Services
         private static SemaphoreSlim _concurrencyLimiter;
         private static int _currentMaxConcurrency;
 
+        /// <summary>
+        /// User's MaxConcurrency clamped by the current translator's own cap (if any).
+        /// Claude Code caps this at 2: each request spawns a heavyweight CLI process.
+        /// </summary>
+        private static int EffectiveMaxConcurrency
+        {
+            get
+            {
+                var limit = CurrentTranslator?.MaxConcurrentRequests ?? 0;
+                return limit > 0 ? Math.Min(Settings.MaxConcurrency, limit) : Settings.MaxConcurrency;
+            }
+        }
+
         public static void Prepare()
         {
             translators.Clear();
@@ -78,6 +91,14 @@ namespace AutoTranslation.Services
             Log.Message(AutoTranslation.LogPrefix + $"List of translators: {translators.Select(x => x.Name).ToCommaList()}, Current translator: {CurrentTranslator?.Name}");
             Ready = CurrentTranslator != null;
 
+            if (!Settings.EnableAutoTranslation)
+            {
+                // Cache-only mode: injected translations still come from the cache,
+                // but nothing is queued and no network request is ever made
+                Ready = false;
+                Log.Message(AutoTranslation.LogPrefix + "Auto translation is disabled - using cached translations only.");
+            }
+
             TranslationCacheManager.Load(nameof(CachedTranslationsV2));
             foreach (var pair in TranslationCacheManager.GetAll())
             {
@@ -92,7 +113,7 @@ namespace AutoTranslation.Services
         /// Creates a cache key from the original text and optional additional key.
         /// Since we now use Base64 encoding for XML storage, we can keep the original text intact.
         /// </summary>
-        private static string NormalizeKey(string text)
+        internal static string NormalizeKey(string text)
         {
             if (text.NullOrEmpty())
             {
@@ -111,9 +132,19 @@ namespace AutoTranslation.Services
 
         internal static string PolishText(string text)
         {
-            return Regex.Unescape(Regex.Replace(text, "\\[Uu]([0-9A-Fa-f]{4})",
-                    m => char.ToString((char)ushort.Parse(m.Groups[1].Value, NumberStyles.AllowHexSpecifier)))
-                .Replace("\\\"", "\"")).Trim();
+            // JSON-layer parsing already unescapes proper responses; this pass only cleans up
+            // stray escapes some translators leak. A literal backslash in a translation would
+            // make Regex.Unescape throw, so fall back to the raw text instead of failing the item.
+            try
+            {
+                return Regex.Unescape(Regex.Replace(text, "\\[Uu]([0-9A-Fa-f]{4})",
+                        m => char.ToString((char)ushort.Parse(m.Groups[1].Value, NumberStyles.AllowHexSpecifier)))
+                    .Replace("\\\"", "\"")).Trim();
+            }
+            catch (ArgumentException)
+            {
+                return text.Trim();
+            }
         }
 
         private static bool _networkPauseNotified;
@@ -135,6 +166,12 @@ namespace AutoTranslation.Services
 
         public static void StartThread()
         {
+            if (!Settings.EnableAutoTranslation)
+            {
+                Log.Message(AutoTranslation.LogPrefix + "Auto translation is disabled - translation thread not started.");
+                return;
+            }
+
             if (CurrentTranslator == null)
             {
                 Log.Error(AutoTranslation.LogPrefix + $"::Critical Error:: CurrentTranslator was null. Couldn't get any available Translator within {translators.Select(x => x.Name).ToCommaList()}");
@@ -142,8 +179,8 @@ namespace AutoTranslation.Services
             }
 
             Working = true;
-            _concurrencyLimiter = new SemaphoreSlim(Settings.MaxConcurrency);
-            _currentMaxConcurrency = Settings.MaxConcurrency;
+            _concurrencyLimiter = new SemaphoreSlim(EffectiveMaxConcurrency);
+            _currentMaxConcurrency = EffectiveMaxConcurrency;
 
             _translationThread = Task.Factory.StartNew(async () =>
             {
@@ -155,13 +192,13 @@ namespace AutoTranslation.Services
                         continue;
                     }
 
-                    // Dynamically update concurrency limit if settings changed
-                    if (_currentMaxConcurrency != Settings.MaxConcurrency)
+                    // Dynamically update concurrency limit if settings or translator changed
+                    if (_currentMaxConcurrency != EffectiveMaxConcurrency)
                     {
                         _concurrencyLimiter?.Dispose();
-                        _concurrencyLimiter = new SemaphoreSlim(Settings.MaxConcurrency);
-                        _currentMaxConcurrency = Settings.MaxConcurrency;
-                        Log.Message(AutoTranslation.LogPrefix + $"Updated concurrency limit to {Settings.MaxConcurrency}");
+                        _concurrencyLimiter = new SemaphoreSlim(EffectiveMaxConcurrency);
+                        _currentMaxConcurrency = EffectiveMaxConcurrency;
+                        Log.Message(AutoTranslation.LogPrefix + $"Updated concurrency limit to {_currentMaxConcurrency}");
                     }
                     
                     if (_queue.Count > 0)
@@ -299,6 +336,22 @@ namespace AutoTranslation.Services
                 {
                     Log.Message($"ERROR: {e.Message}");
                 }
+
+                if (Settings.UsageDirty)
+                {
+                    Settings.UsageDirty = false;
+                    LongEventHandler.ExecuteWhenFinished(() =>
+                    {
+                        try
+                        {
+                            LoadedModManager.GetMod<AutoTranslation>()?.WriteSettings();
+                        }
+                        catch (Exception e)
+                        {
+                            Log.Warning(AutoTranslation.LogPrefix + $"Failed to persist usage counters: {e.Message}");
+                        }
+                    });
+                }
             }, null, 0, 60000);
         }
 
@@ -334,7 +387,9 @@ namespace AutoTranslation.Services
                 // Don't use it, let it re-translate with ModId
             }
 
-            if (!Ready)
+            // Covers both startup-disabled (Ready=false) and a runtime toggle-off:
+            // cache misses return the original text and are never queued
+            if (!Ready || !Settings.EnableAutoTranslation)
             {
                 callBack(orig);
                 return;

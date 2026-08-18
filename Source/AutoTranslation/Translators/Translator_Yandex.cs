@@ -16,27 +16,18 @@ namespace AutoTranslation.Translators
     public class Translator_Yandex : Translator_BaseTraditional
     {
         private const string translateUrl = "https://browser.translate.yandex.net/api/v1/tr.json/translate";
-        private string _cachedTranslateLanguage;
 
         public override string Name => "Yandex";
 
-        public override string TranslateLanguage => _cachedTranslateLanguage ?? (_cachedTranslateLanguage = GetTranslateLanguage());
+        // Not cached: the user can change the target language override at runtime
+        public override string TranslateLanguage => GetTranslateLanguage();
         public override bool RequiresKey => false;
 
         public override void Prepare()
         {
-            try
-            {
-                // Test connectivity with a simple translation request
-                var testParams = $"?lang=en&text=test&srv=browser_video_translation";
-                var resp = NetworkHelper.Post(translateUrl + testParams, "", new Dictionary<string, string>(), contentType: null);
-                if (string.IsNullOrEmpty(resp)) throw new Exception("no response");
-                Ready = true;
-            }
-            catch (Exception ex)
-            {
-                Log.Message(AutoTranslation.LogPrefix + $"Preparing Translator named '{Name}' was failed, reason: {ex.Message}");
-            }
+            // No connectivity preflight (it blocked game loading when offline);
+            // real requests + the circuit breaker handle reachability.
+            Ready = true;
         }
 
         public override bool TryTranslate(string text, out string translated)
@@ -55,17 +46,18 @@ namespace AutoTranslation.Translators
                 var response = NetworkHelper.Post(translateUrl + translateParams, "", headers, contentType: null);
                 
                 // Parse response - Yandex returns {"code": 200, "lang": "ja-en", "text": ["translated text"]}
-                // Extract text array using regex: "text":\["([^"]*)"\]
-                var textArrayPattern = @"""text""\s*:\s*\[\s*""([^""]*)""\s*\]";
+                // The string body must allow escape pairs (\" etc.) or translations containing
+                // quotes would fail to match at all
+                var textArrayPattern = @"""text""\s*:\s*\[\s*""((?:\\.|[^""\\])*)""";
                 var match = Regex.Match(response, textArrayPattern);
-                
+
                 if (!match.Success || match.Groups.Count < 2)
                 {
                     translated = text;
                     return false;
                 }
-                
-                var translatedProtected = match.Groups[1].Value;
+
+                var translatedProtected = match.Groups[1].Value.UnescapeJsonString();
                 
                 // Restore placeholders
                 var (restoredText, allRestored) = translatedProtected.RestorePlaceholders(placeholders);
@@ -91,6 +83,8 @@ namespace AutoTranslation.Translators
 
         public override bool SupportsCurrentLanguage()
         {
+            if (Helpers.HasLanguageOverride()) return true;
+
             var lang = LanguageDatabase.activeLanguage;
             if (lang == null)
             {
@@ -98,7 +92,7 @@ namespace AutoTranslation.Translators
                 return false;
             }
 
-            return TranslateLanguageGetter.TryGetValue(lang.LegacyFolderName, out var _);
+            return TranslateLanguageGetter.ContainsKey(lang.LegacyFolderName.NormalizeLanguageFolder());
         }
 
         private static readonly Dictionary<string, string> TranslateLanguageGetter = new Dictionary<string, string>
@@ -163,21 +157,12 @@ namespace AutoTranslation.Translators
         
         private static string GetTranslateLanguage()
         {
-            if (LanguageDatabase.activeLanguage == null)
+            var res = Helpers.ResolveTargetLanguage(TranslateLanguageGetter);
+            if (res == null)
             {
-                Log.Warning(AutoTranslation.LogPrefix + "activeLanguage was null");
-                return "en";
-            }
-
-            var lang = LanguageDatabase.activeLanguage.LegacyFolderName;
-            lang = lang.Split('_').First();
-
-            if (!TranslateLanguageGetter.TryGetValue(lang, out var res))
-            {
-                Log.Error(AutoTranslation.LogPrefix + $"Unsupported language: {LanguageDatabase.activeLanguage.LegacyFolderName}");
+                Log.Error(AutoTranslation.LogPrefix + $"Unsupported language: {LanguageDatabase.activeLanguage?.LegacyFolderName ?? "(null)"}");
                 res = "en";
             }
-
             return res;
         }
     }

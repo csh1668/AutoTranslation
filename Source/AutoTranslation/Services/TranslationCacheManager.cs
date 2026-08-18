@@ -188,13 +188,65 @@ namespace AutoTranslation.Services
             }
         }
 
+        /// <summary>
+        /// Serializes the current cache to the same XML format the on-disk cache uses.
+        /// Used for Gist sharing so upload/download need no separate (fragile) JSON codec.
+        /// </summary>
+        public static string SerializeCacheToXml()
+        {
+            var doc = new XmlDocument();
+            var root = doc.CreateElement("Cache");
+            doc.AppendChild(root);
+            root.SetAttribute("Language", LanguageDatabase.activeLanguage?.FriendlyNameEnglish ?? "NULL");
+
+            foreach (var kv in Instance.Cache.OrderBy(kv => kv.Key, StringComparer.Ordinal))
+            {
+                if (string.IsNullOrEmpty(kv.Key) || string.IsNullOrEmpty(kv.Value)) continue;
+
+                var keyToSave = kv.Key.IndexOf(':') < 0 ? $"{LEGACY_MOD_ID}:{kv.Key}" : kv.Key;
+
+                var entry = doc.CreateElement("Entry");
+                entry.SetAttribute("Key", EncodeKey(keyToSave));
+                entry.InnerText = kv.Value;
+                root.AppendChild(entry);
+            }
+
+            return doc.OuterXml;
+        }
+
+        /// <summary>
+        /// Parses cache XML (the same format as the on-disk cache / Gist uploads)
+        /// into a dictionary without touching the live cache.
+        /// </summary>
+        public static Dictionary<string, string> ParseCacheXml(string xml)
+        {
+            var result = new Dictionary<string, string>();
+            if (string.IsNullOrEmpty(xml)) return result;
+
+            var doc = new XmlDocument();
+            doc.LoadXml(xml);
+
+            foreach (var element in doc.DocumentElement.ChildNodes.OfType<XmlElement>())
+            {
+                string key = element.HasAttribute("Key")
+                    ? DecodeKey(element.GetAttribute("Key"))
+                    : element.Name;
+
+                if (string.IsNullOrEmpty(key)) continue;
+                if (key.IndexOf(':') < 0) key = $"{LEGACY_MOD_ID}:{key}";
+                result[key] = element.InnerText;
+            }
+
+            return result;
+        }
+
         // Encoding helpers for safe XML keys
-        private string EncodeKey(string key)
+        private static string EncodeKey(string key)
         {
             return Convert.ToBase64String(Encoding.UTF8.GetBytes(key));
         }
 
-        private string DecodeKey(string encodedKey)
+        private static string DecodeKey(string encodedKey)
         {
             try
             {
