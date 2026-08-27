@@ -16,7 +16,7 @@ namespace AutoTranslation.Translators
     public class Translator_Google : Translator_BaseTraditional
     {
         private const string testUrl = "https://translate.google.com";
-        private const string urlFormat = "https://translate.google.com/translate_a/single?client=gtx&sl={0}&tl={1}&dt=t&ie=UTF-8&oe=UTF-8&q={2}";
+        private const string urlFormat = "https://translate.google.com/translate_a/single?client=at&sl={0}&tl={1}&dt=t&ie=UTF-8&oe=UTF-8&q={2}";
         private static readonly StringBuilder sb = new StringBuilder(1024);
 
         public override string Name  => "Google";
@@ -39,22 +39,22 @@ namespace AutoTranslation.Translators
             {
                 // Protect placeholders
                 var (protectedText, placeholders) = text.ProtectPlaceholders();
-                
+
                 var url = string.Format(urlFormat, StartLanguage, TranslateLanguage, UnityWebRequest.EscapeURL(protectedText));
                 var t = ParseResult(NetworkHelper.Get(url), out var detectedLang);
-                
+
                 // Restore placeholders
                 var (restoredText, allRestored) = t.RestorePlaceholders(placeholders);
-                
+
                 translated = detectedLang == TranslateLanguage ? text : restoredText;
-                
+
                 if (!allRestored)
                 {
                     Log.Warning(AutoTranslation.LogPrefix + $"{Name}: Some placeholders were not properly restored. Using original text.");
                     translated = text;
                     return false;
                 }
-                
+
                 return true;
             }
             catch (Exception e)
@@ -80,34 +80,85 @@ namespace AutoTranslation.Translators
             return TranslateLanguageGetter.ContainsKey(lang.LegacyFolderName.NormalizeLanguageFolder());
         }
 
+
         internal static string ParseResult(string text, out string detectedLang)
         {
             sb.Clear();
-            var flag = false;
-            for (int i = 0; i < text.Length; i++)
+            detectedLang = string.Empty;
+
+            int depth = 0;
+            int i = 0;
+            int stringIndexInSegment = 0;
+            bool inSegments = true; // still inside the first (segments) array
+            while (i < text.Length)
             {
-                if (text[i] == '"' && i > 0 && text[i - 1] != '\\')
+                var c = text[i];
+                if (c == '"')
                 {
-                    if (flag)
-                        break;
-                    flag = true;
+                    var str = ReadJsonString(text, ref i);
+                    if (inSegments && depth == 3 && stringIndexInSegment == 0)
+                    {
+                        sb.Append(str);
+                    }
+                    else if (!inSegments && depth == 1 && detectedLang.Length == 0)
+                    {
+                        detectedLang = str;
+                    }
+                    stringIndexInSegment++;
+                    continue;
                 }
-                else if (flag) sb.Append(text[i]);
+
+                if (c == '[')
+                {
+                    depth++;
+                    if (depth == 3) stringIndexInSegment = 0;
+                }
+                else if (c == ']')
+                {
+                    depth--;
+                    if (depth == 1 && inSegments) inSegments = false; // closed the segments array
+                }
+                i++;
             }
 
-            // Simple regex to extract language, fragile but matches existing logic
-            // The existing regex was: @"\[""([^""]+)""\]\]\]"
-            // The detected lang is usually at the end of the JSON array for client=gtx
-            // [[["translated","orig",...]], ... "en"]
-            // The regex looks for ["code"]]] at the end? 
-            // Original code: detectedLang = "aaaaa"; // match.Success ? ...
-            // It seems detection was disabled/commented out in original code?
-            // "detectedLang = "aaaaa"; /*match.Success ? match.Groups[1].Value : string.Empty;*/"
-            // So I will leave it as is.
-            
-            detectedLang = "aaaaa"; 
-
             return sb.ToString();
+        }
+
+        private static string ReadJsonString(string text, ref int i)
+        {
+            var result = new StringBuilder();
+            i++; // skip opening quote
+            while (i < text.Length)
+            {
+                var c = text[i];
+                if (c == '"') { i++; break; }
+                if (c == '\\' && i + 1 < text.Length)
+                {
+                    i++;
+                    var e = text[i];
+                    switch (e)
+                    {
+                        case 'n': result.Append('\n'); break;
+                        case 'r': result.Append('\r'); break;
+                        case 't': result.Append('\t'); break;
+                        case 'b': result.Append('\b'); break;
+                        case 'f': result.Append('\f'); break;
+                        case 'u':
+                            if (i + 4 < text.Length && int.TryParse(text.Substring(i + 1, 4), System.Globalization.NumberStyles.HexNumber, null, out var code))
+                            {
+                                result.Append((char)code);
+                                i += 4;
+                            }
+                            break;
+                        default: result.Append(e); break; // \" \\ \/
+                    }
+                    i++;
+                    continue;
+                }
+                result.Append(c);
+                i++;
+            }
+            return result.ToString();
         }
 
         private static readonly Dictionary<string, string> TranslateLanguageGetter = new Dictionary<string, string>
@@ -143,7 +194,7 @@ namespace AutoTranslation.Translators
             ["Vietnamese"] = "vi",
             ["Thai"] = "th"
         };
-        
+
         private static string GetTranslateLanguage()
         {
             var res = Helpers.ResolveTargetLanguage(TranslateLanguageGetter);
