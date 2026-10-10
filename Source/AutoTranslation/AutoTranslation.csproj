@@ -107,6 +107,7 @@
     <Compile Include="Services\LanguageDetector.cs" />
     <Compile Include="Utilities\MigrationHelper.cs" />
     <Compile Include="Utilities\NetworkHelper.cs" />
+    <Compile Include="Utilities\RateLimiter.cs" />
     <Compile Include="Utilities\ReflectionCache.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="Patches.cs" />

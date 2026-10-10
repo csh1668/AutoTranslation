@@ -234,15 +234,13 @@ namespace AutoTranslation.Services
                         }
 
                         // Check if batch translation is supported and enabled
-                        var aiConfig = CurrentTranslator?.Settings as TranslatorSettings_AIModel;
-                        bool useBatch = CurrentTranslator?.SupportsBatchTranslation == true && 
-                                       aiConfig?.EnableBatchTranslation == true &&
+                        bool useBatch = CurrentTranslator?.SupportsBatchTranslation == true &&
                                        _queue.Count > 1; // Only batch if multiple items
-                        
+
                         if (useBatch)
                         {
                             // Batch translation mode
-                            await ProcessBatchTranslation(aiConfig.BatchSizeTokens);
+                            await ProcessBatchTranslation(CurrentTranslator.BatchSizeTokens);
                         }
                         else
                         {
@@ -489,13 +487,21 @@ namespace AutoTranslation.Services
                     }
                     else
                     {
-                        // Batch failed - retry individually
-                        Log.Warning(AutoTranslation.LogPrefix + 
-                            $"Batch translation failed, retrying {batchItems.Count} items individually");
-                        
+                        // Batch failed - requeue (they may be batched again), bounded by the
+                        // retry budget so one permanently failing item can't loop the whole batch
+                        Log.Warning(AutoTranslation.LogPrefix +
+                            $"Batch translation failed, requeueing {batchItems.Count} items");
+
                         foreach (var item in batchItems)
                         {
-                            // Re-add to queue for individual processing
+                            // Network down: don't consume the retry budget (queue is paused anyway)
+                            if (!NetworkStateMonitor.IsOpen &&
+                                _retryCount.AddOrUpdate(item.Key, 1, (k, v) => v + 1) > MAX_RETRIES)
+                            {
+                                _retryCount.TryRemove(item.Key, out _);
+                                item.Value(item.Key, false);
+                                continue;
+                            }
                             _queue.Enqueue(item);
                             _inQueue.TryAdd(item.Key, 0);
                         }

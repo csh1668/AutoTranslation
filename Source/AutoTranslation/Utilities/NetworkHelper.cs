@@ -61,16 +61,21 @@ namespace AutoTranslation.Utilities
             }, maxRetries, url);
         }
 
-        public static string Get(string url, Dictionary<string, string> headers = null, int maxRetries = DEFAULT_RETRIES, int timeoutMs = DEFAULT_TIMEOUT_MS)
+        public static string Get(string url, Dictionary<string, string> headers = null, int maxRetries = DEFAULT_RETRIES, int timeoutMs = DEFAULT_TIMEOUT_MS, bool retryOnRateLimit = true)
         {
             return ExecuteWithRetry(() =>
             {
                 var request = CreateRequest(url, "GET", headers, timeoutMs);
                 return GetResponseText(request);
-            }, maxRetries, url);
+            }, maxRetries, url, retryOnRateLimit);
         }
 
-        private static string ExecuteWithRetry(Func<string> action, int maxRetries, string context)
+        public static bool IsRateLimited(WebException ex)
+        {
+            return ex.Response is HttpWebResponse response && (int)response.StatusCode == 429;
+        }
+
+        private static string ExecuteWithRetry(Func<string> action, int maxRetries, string context, bool retryOnRateLimit = true)
         {
             int attempts = 0;
             while (true)
@@ -96,6 +101,8 @@ namespace AutoTranslation.Utilities
 
                     // While the circuit is open, fail fast: no inner retries, the queue is paused anyway
                     if (NetworkStateMonitor.IsOpen) throw;
+
+                    if (!retryOnRateLimit && IsRateLimited(ex)) throw;
 
                     if (attempts > maxRetries)
                     {

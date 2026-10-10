@@ -31,6 +31,8 @@ namespace AutoTranslation.Translators
         // Traditional translators don't support batch translation
         public virtual bool SupportsBatchTranslation => false;
 
+        public virtual int BatchSizeTokens => 0;
+
         // No translator-side cap by default
         public virtual int MaxConcurrentRequests => 0;
 
