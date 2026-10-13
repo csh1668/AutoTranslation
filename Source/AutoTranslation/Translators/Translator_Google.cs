@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -9,19 +9,21 @@ using System.Text.RegularExpressions;
 using UnityEngine.Networking;
 using Verse;
 using AutoTranslation;
+using AutoTranslation.Services;
 using AutoTranslation.Utilities;
 
 namespace AutoTranslation.Translators
 {
     public class Translator_Google : Translator_BaseTraditional
     {
-        private const string urlFormat = "https://{0}/translate_a/single?client=at&sl={1}&tl={2}&dt=t&ie=UTF-8&oe=UTF-8&q={3}";
+        private const string urlFormat = "https://{0}/translate_a/single?client=gtx&sl={1}&tl={2}&dt=t&ie=UTF-8&oe=UTF-8&q={3}";
         private const string DirectHost = "translate.google.com";
         private const string ChinaProxyHost = "google-translate-proxy.tantu.com";
 
+        private const string UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
         private static readonly Dictionary<string, string> requestHeaders = new Dictionary<string, string>
         {
-            ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+            ["User-Agent"] = UserAgent
         };
 
         private const int QueueBatchTokens = 750;
@@ -50,13 +52,21 @@ namespace AutoTranslation.Translators
 
         public override bool TryTranslate(string text, out string translated)
         {
+            return TryTranslate(text, out translated, false);
+        }
+
+        // skipRetry = interactive call from the settings UI (main thread): one attempt, never
+        // waits out a 429 cooldown - blocking there freezes the game for minutes
+        public override bool TryTranslate(string text, out string translated, bool skipRetry)
+        {
             try
             {
                 // Protect placeholders
                 var (protectedText, placeholders) = text.ProtectPlaceholders();
 
                 var targetLang = TranslateLanguage;
-                var t = ParseResult(RequestWithCooldown(BuildUrl(protectedText, targetLang)), out var detectedLang);
+                var url = BuildUrl(protectedText, targetLang);
+                var t = ParseResult(skipRetry ? RequestOnce(url) : RequestWithCooldown(url), out var detectedLang);
 
                 // Restore placeholders
                 var (restoredText, allRestored) = t.RestorePlaceholders(placeholders);
@@ -211,6 +221,104 @@ namespace AutoTranslation.Translators
             return string.Format(urlFormat, host, StartLanguage, targetLang, UnityWebRequest.EscapeURL(text));
         }
 
+        private sealed class RateLimitedException : Exception
+        {
+            public RateLimitedException() : base("HTTP 429 Too Many Requests") { }
+        }
+
+        private static bool IsRateLimited(Exception e)
+        {
+            return e is RateLimitedException || (e is WebException we && NetworkHelper.IsRateLimited(we));
+        }
+
+        private const int MaxTransportRetries = 3;
+        private const int TransportRetryBaseDelayMs = 5000;
+        private static string loggedHttpStack;
+
+        private string Send(string url, int maxRetries, int timeoutMs)
+        {
+            string body = null;
+            string stack = null;
+            if (MonoTlsClient.IsSupported)
+            {
+                try
+                {
+                    body = SendWithMonoTls(url, maxRetries, timeoutMs);
+                    stack = "Mono (browser-like ciphers)";
+                }
+                catch (Exception e) when (e is TypeLoadException || e is MissingMethodException || e is NotSupportedException || e is InvalidCastException)
+                {
+                    MonoTlsClient.Disable();
+                    Log.Warning(AutoTranslation.LogPrefix + $"{Name}: custom TLS settings unavailable ({e.GetType().Name}: {e.Message}), falling back to the default HTTP client.");
+                }
+            }
+            if (body == null)
+            {
+                body = NetworkHelper.Get(url, requestHeaders, maxRetries, timeoutMs, retryOnRateLimit: false);
+                stack = "default";
+            }
+            if (loggedHttpStack != stack)
+            {
+                loggedHttpStack = stack;
+                Log.Message(AutoTranslation.LogPrefix + $"{Name}: using {stack} HTTP client.");
+            }
+
+            // Block/CAPTCHA pages come back as HTML; never parse them as a translation
+            if (!body.TrimStart().StartsWith("["))
+                throw new WebException("Unexpected non-JSON response: " + body.Substring(0, Math.Min(100, body.Length)), WebExceptionStatus.ProtocolError);
+            return body;
+        }
+
+        /// Runs one GET with transport retries and circuit-breaker reporting
+        private static string SendWithMonoTls(string url, int maxRetries, int timeoutMs)
+        {
+            for (int attempt = 0; ; attempt++)
+            {
+                int status;
+                string body;
+                try
+                {
+                    body = MonoTlsClient.Get(url, UserAgent, timeoutMs, out status);
+                }
+                catch (WebException e) when (NetworkHelper.IsConnectionLevelFailure(e))
+                {
+                    NetworkStateMonitor.ReportFailure();
+                    if (attempt >= maxRetries || NetworkStateMonitor.IsOpen) throw;
+                    System.Threading.Thread.Sleep(TransportRetryBaseDelayMs * (1 << attempt));
+                    continue;
+                }
+
+                NetworkStateMonitor.ReportSuccess();
+                if (status == 429) throw new RateLimitedException();
+                if (status != 200) throw new WebException($"HTTP {status}", WebExceptionStatus.ProtocolError);
+                return body;
+            }
+        }
+
+        private string RequestOnce(string url)
+        {
+            if (!rateLimiter.TryWait(TimeSpan.FromSeconds(2)))
+            {
+                var paused = rateLimiter.PausedRemaining;
+                throw new InvalidOperationException(paused > TimeSpan.Zero
+                    ? $"Google requests are paused after a 429 ({Math.Ceiling(paused.TotalMinutes)} min left)"
+                    : "Google request queue is busy, try again in a moment");
+            }
+            try
+            {
+                return Send(url, 0, 10000);
+            }
+            catch (Exception e) when (IsRateLimited(e))
+            {
+                // Let the background queue back off too
+                if (rateLimiter.PauseFor(BanCooldown))
+                {
+                    Log.Warning(AutoTranslation.LogPrefix + $"{Name}: rate limited by Google (429). Pausing Google requests for {BanCooldown.TotalMinutes} minutes.");
+                }
+                throw;
+            }
+        }
+
         private string RequestWithCooldown(string url)
         {
             for (int bans = 0; ; bans++)
@@ -218,9 +326,9 @@ namespace AutoTranslation.Translators
                 rateLimiter.Wait();
                 try
                 {
-                    return NetworkHelper.Get(url, requestHeaders, retryOnRateLimit: false);
+                    return Send(url, MaxTransportRetries, NetworkHelper.DEFAULT_TIMEOUT_MS);
                 }
-                catch (WebException e) when (NetworkHelper.IsRateLimited(e) && bans < MaxBanWaits)
+                catch (Exception e) when (IsRateLimited(e) && bans < MaxBanWaits)
                 {
                     if (rateLimiter.PauseFor(BanCooldown))
                     {

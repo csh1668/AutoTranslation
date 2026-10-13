@@ -43,6 +43,37 @@ namespace AutoTranslation.Utilities
             }
         }
 
+        public bool TryWait(TimeSpan maxWait)
+        {
+            long slot;
+            lock (_lock)
+            {
+                var now = _clock.Elapsed.Ticks;
+                if (now < _pausedUntilTicks) return false;
+                if (_nextSlotTicks < now) _nextSlotTicks = now;
+                if (_nextSlotTicks - now > maxWait.Ticks) return false;
+                slot = _nextSlotTicks;
+                _nextSlotTicks += _intervalTicks;
+            }
+
+            long remaining;
+            while ((remaining = slot - _clock.Elapsed.Ticks) > 0)
+                Thread.Sleep(TimeSpan.FromTicks(remaining));
+            return true;
+        }
+
+        public TimeSpan PausedRemaining
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    var remaining = _pausedUntilTicks - _clock.Elapsed.Ticks;
+                    return remaining > 0 ? TimeSpan.FromTicks(remaining) : TimeSpan.Zero;
+                }
+            }
+        }
+
         public bool PauseFor(TimeSpan duration)
         {
             lock (_lock)

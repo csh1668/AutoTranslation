@@ -22,7 +22,11 @@ namespace AutoTranslation.Utilities
             {
                 // Unity Mono may default to TLS 1.0/1.1 only; OR-in TLS 1.2 (do not overwrite -
                 // overwriting could break other mods' requests)
+#if !RW17
+                // 1.7 runs on CoreCLR whose default (SystemDefault = 0) lets the OS negotiate
+                // TLS 1.2/1.3; OR-ing Tls12 in there would pin every request to TLS 1.2
                 ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
+#endif
                 // Some non-standard servers (Papago/Yandex) mishandle Expect: 100-continue on POST
                 ServicePointManager.Expect100Continue = false;
             }

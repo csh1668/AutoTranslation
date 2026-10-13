@@ -91,6 +91,10 @@
       <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\UnityEngine.UnityWebRequestModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Mono.Security">
+      <HintPath>..\..\..\..\RimWorldWin64_Data\Managed\Mono.Security.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Services\APIKeyRotater.cs" />
@@ -108,6 +112,7 @@
     <Compile Include="Utilities\MigrationHelper.cs" />
     <Compile Include="Utilities\NetworkHelper.cs" />
     <Compile Include="Utilities\RateLimiter.cs" />
+    <Compile Include="Utilities\MonoTlsClient.cs" />
     <Compile Include="Utilities\ReflectionCache.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="Patches.cs" />

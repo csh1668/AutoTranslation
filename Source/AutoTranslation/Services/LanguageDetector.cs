@@ -210,12 +210,19 @@ namespace AutoTranslation.Services
                 if (activeLanguage == null)
                     return false;
 
-                // 기본 언어(영어)인 경우 언어 감지 불필요
-                if (activeLanguage == LanguageDatabase.defaultLanguage)
-                    return false;
+                // 기본 언어(영어)인 경우: 아래의 영어 목표 처리로 넘김
+                targetLanguageFolderName = activeLanguage == LanguageDatabase.defaultLanguage
+                    ? "English"
+                    : activeLanguage.folderName;
+            }
 
-                // 목표 언어 폴더 이름
-                targetLanguageFolderName = activeLanguage.folderName;
+            // English target: Latin-only text is treated as already English. Telling English apart
+            // from other Latin-script languages is unreliable, and sending every English def string
+            // to the translator floods it (Google detects 'en' == target and returns it unchanged).
+            // Only text containing a non-Latin script (CJK, Hangul, Cyrillic, ...) gets translated.
+            if (IsEnglishLanguage(targetLanguageFolderName))
+            {
+                return !ContainsNonLatinScript(text);
             }
 
             // 라틴 문자권 언어(영어, 독일어, 프랑스어 등)끼리는 문자 체계가 동일하여 
@@ -228,6 +235,33 @@ namespace AutoTranslation.Services
             }
 
             // 라틴 문자권 언어는 오탐 방지를 위해 감지 기능을 끄고 항상 번역을 시도합니다.
+            return false;
+        }
+
+        private static bool IsEnglishLanguage(string languageFolderName)
+        {
+            var lower = languageFolderName.Trim().ToLower();
+            return lower.StartsWith("english") || lower == "en" || lower.StartsWith("en-");
+        }
+
+        /// <summary>
+        /// 비라틴 문자(한글, 가나, 한자, 키릴, 아랍, 태국, 히브리, 그리스 문자)가 하나라도 있는지 확인합니다.
+        /// </summary>
+        private static bool ContainsNonLatinScript(string text)
+        {
+            for (int i = 0; i < text.Length; i++)
+            {
+                int ci = text[i];
+                if ((ci >= 0xAC00 && ci <= 0xD7A3) || (ci >= 0x1100 && ci <= 0x11FF) || (ci >= 0x3130 && ci <= 0x318F) || // Hangul
+                    (ci >= 0x3040 && ci <= 0x30FF) || (ci >= 0x31F0 && ci <= 0x31FF) || // Kana
+                    (ci >= 0x4E00 && ci <= 0x9FFF) || (ci >= 0x3400 && ci <= 0x4DBF) || // CJK
+                    (ci >= 0x0370 && ci <= 0x03FF) || (ci >= 0x1F00 && ci <= 0x1FFF) || // Greek
+                    (ci >= 0x0400 && ci <= 0x04FF) || // Cyrillic
+                    (ci >= 0x0590 && ci <= 0x05FF) || // Hebrew
+                    (ci >= 0x0600 && ci <= 0x06FF) || (ci >= 0x0750 && ci <= 0x077F) || // Arabic
+                    (ci >= 0x0E00 && ci <= 0x0E7F)) // Thai
+                    return true;
+            }
             return false;
         }
 
